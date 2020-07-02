@@ -50,6 +50,7 @@ using namespace bpp;
 
 // From the STL:
 #include <iostream>
+#include <omp.h> // this iclusion will enable parallelization
 
 using namespace std;
 
@@ -473,18 +474,23 @@ void RNonHomogeneousMixedTreeLikelihood::computeSubtreeLikelihood(const Node* no
     
     // Must reset the likelihood array first (i.e. set all of them to 0):
     VVVdouble* _likelihoods_node = &likelihoodData_->getLikelihoodArray(nodeId);
-    for (size_t i = 0; i < nbSites; i++)
-    {
-      // For each site in the sequence,
-      VVdouble* _likelihoods_node_i = &(*_likelihoods_node)[i];
-      for (size_t c = 0; c < nbClasses_; c++)
+    #pragma omp parallel
+	  {
+	    // keren - execute the likelihood per site computation in parallel. The shared array is _likelihoods_node
+      #pragma omp for schedule(dynamic, 100)
+      for (size_t i = 0; i < nbSites; i++)
       {
-        // For each rate classe,
-        Vdouble* _likelihoods_node_i_c = &(*_likelihoods_node_i)[c];
-        for (size_t x = 0; x < nbStates_; x++)
+        // For each site in the sequence,
+        VVdouble* _likelihoods_node_i = &(*_likelihoods_node)[i];
+        for (size_t c = 0; c < nbClasses_; c++)
         {
-          // For each initial state,
-          (*_likelihoods_node_i_c)[x] = 0.;
+          // For each rate classe,
+          Vdouble* _likelihoods_node_i_c = &(*_likelihoods_node_i)[c];
+          for (size_t x = 0; x < nbStates_; x++)
+          {
+            // For each initial state,
+            (*_likelihoods_node_i_c)[x] = 0.;
+          }
         }
       }
     }
@@ -502,18 +508,23 @@ void RNonHomogeneousMixedTreeLikelihood::computeSubtreeLikelihood(const Node* no
     for (size_t t = 0; t < vr.size(); t++)
     {
       VVVdouble* _vt_likelihoods_node = &vr[t]->likelihoodData_->getLikelihoodArray(nodeId);
-      for (size_t i = 0; i < nbSites; i++)
-      {
-        // For each site in the sequence,
-        VVdouble* _likelihoods_node_i = &(*_likelihoods_node)[i];
-        for (size_t c = 0; c < nbClasses_; c++)
+      #pragma omp parallel
+	    {
+	      // keren - execute the likelihood per site computation in parallel. The shared array is _likelihoods_node
+        #pragma omp for schedule(dynamic, 100) 
+        for (size_t i = 0; i < nbSites; i++)
         {
-          // For each rate classe,
-          Vdouble* _likelihoods_node_i_c = &(*_likelihoods_node_i)[c];
-          Vdouble* _vt_likelihoods_node_i_c = &(*_vt_likelihoods_node)[i][c];
-          for (size_t x = 0; x < nbStates_; x++)
+          // For each site in the sequence,
+          VVdouble* _likelihoods_node_i = &(*_likelihoods_node)[i];
+          for (size_t c = 0; c < nbClasses_; c++)
           {
-            (*_likelihoods_node_i_c)[x] +=  (*_vt_likelihoods_node_i_c)[x] * vr[t]->getProbability()/getProbability();
+            // For each rate classe,
+            Vdouble* _likelihoods_node_i_c = &(*_likelihoods_node_i)[c];
+            Vdouble* _vt_likelihoods_node_i_c = &(*_vt_likelihoods_node)[i][c];
+            for (size_t x = 0; x < nbStates_; x++)
+            {
+              (*_likelihoods_node_i_c)[x] +=  (*_vt_likelihoods_node_i_c)[x] * vr[t]->getProbability()/getProbability();
+            }
           }
         }
       }
@@ -569,12 +580,17 @@ void RNonHomogeneousMixedTreeLikelihood::computeTreeDLikelihood(const string& va
     // Fist initialize to 0:
     VVVdouble* _dLikelihoods_father = &likelihoodData_->getDLikelihoodArray(fatherId);
     size_t nbSites  = _dLikelihoods_father->size();
-    for (size_t i = 0; i < nbSites; i++) {
-      VVdouble* _dLikelihoods_father_i = &(*_dLikelihoods_father)[i];
-      for (size_t c = 0; c < nbClasses_; c++) {
-        Vdouble* _dLikelihoods_father_i_c = &(*_dLikelihoods_father_i)[c];
-        for (size_t s = 0; s < nbStates_; s++){
-          (*_dLikelihoods_father_i_c)[s] = 0.;
+    #pragma omp parallel
+	  {
+	    // keren - execute the likelihood per site computation in parallel. The shared array is _likelihoods_node
+      #pragma omp for schedule(dynamic, 100)
+      for (size_t i = 0; i < nbSites; i++) {
+        VVdouble* _dLikelihoods_father_i = &(*_dLikelihoods_father)[i];
+        for (size_t c = 0; c < nbClasses_; c++) {
+          Vdouble* _dLikelihoods_father_i_c = &(*_dLikelihoods_father_i)[c];
+          for (size_t s = 0; s < nbStates_; s++){
+            (*_dLikelihoods_father_i_c)[s] = 0.;
+          }
         }
       }
     }
@@ -588,15 +604,20 @@ void RNonHomogeneousMixedTreeLikelihood::computeTreeDLikelihood(const string& va
       // for each specific subtree
       for (size_t t = 0; t < vr.size(); t++) {
         VVVdouble* _vt_dLikelihoods_father = &vr[t]->likelihoodData_->getDLikelihoodArray(fatherId);
-        for (size_t i = 0; i < nbSites; i++){
-          // For each site in the sequence,
-          VVdouble* _dLikelihoods_father_i = &(*_dLikelihoods_father)[i];
-          for (size_t c = 0; c < nbClasses_; c++){
-            // For each rate classe,
-            Vdouble* _dLikelihoods_father_i_c = &(*_dLikelihoods_father_i)[c];
-            Vdouble* _vt_dLikelihoods_father_i_c = &(*_vt_dLikelihoods_father)[i][c];
-            for (size_t x = 0; x < nbStates_; x++) {
-              (*_dLikelihoods_father_i_c)[x] +=  (*_vt_dLikelihoods_father_i_c)[x] * vr[t]->getProbability()/getProbability();
+        #pragma omp parallel
+	      {
+	        // keren - execute the likelihood per site computation in parallel. The shared array is _likelihoods_node
+          #pragma omp for schedule(dynamic, 100)
+          for (size_t i = 0; i < nbSites; i++){
+            // For each site in the sequence,
+            VVdouble* _dLikelihoods_father_i = &(*_dLikelihoods_father)[i];
+            for (size_t c = 0; c < nbClasses_; c++){
+              // For each rate classe,
+              Vdouble* _dLikelihoods_father_i_c = &(*_dLikelihoods_father_i)[c];
+              Vdouble* _vt_dLikelihoods_father_i_c = &(*_vt_dLikelihoods_father)[i][c];
+              for (size_t x = 0; x < nbStates_; x++) {
+                (*_dLikelihoods_father_i_c)[x] +=  (*_vt_dLikelihoods_father_i_c)[x] * vr[t]->getProbability()/getProbability();
+              }
             }
           }
         }
@@ -661,12 +682,17 @@ void RNonHomogeneousMixedTreeLikelihood::computeTreeD2Likelihood(const string& v
     // Fist initialize to 0:
     VVVdouble* _d2Likelihoods_father = &likelihoodData_->getD2LikelihoodArray(fatherId);
     size_t nbSites  = _d2Likelihoods_father->size();
-    for (size_t i = 0; i < nbSites; i++) {
-      VVdouble* _d2Likelihoods_father_i = &(*_d2Likelihoods_father)[i];
-      for (size_t c = 0; c < nbClasses_; c++) {
-        Vdouble* _d2Likelihoods_father_i_c = &(*_d2Likelihoods_father_i)[c];
-        for (size_t s = 0; s < nbStates_; s++) {
-          (*_d2Likelihoods_father_i_c)[s] = 0.;
+    #pragma omp parallel
+	  {
+	    // keren - execute the likelihood per site computation in parallel. The shared array is _likelihoods_node
+      #pragma omp for schedule(dynamic, 100)
+      for (size_t i = 0; i < nbSites; i++) {
+        VVdouble* _d2Likelihoods_father_i = &(*_d2Likelihoods_father)[i];
+        for (size_t c = 0; c < nbClasses_; c++) {
+          Vdouble* _d2Likelihoods_father_i_c = &(*_d2Likelihoods_father_i)[c];
+          for (size_t s = 0; s < nbStates_; s++) {
+            (*_d2Likelihoods_father_i_c)[s] = 0.;
+          }
         }
       }
     }
@@ -680,15 +706,20 @@ void RNonHomogeneousMixedTreeLikelihood::computeTreeD2Likelihood(const string& v
       // for each specific subtree
       for (size_t t = 0; t < vr.size(); t++) {
         VVVdouble* _vt_d2Likelihoods_father = &vr[t]->likelihoodData_->getD2LikelihoodArray(fatherId);
-        for (size_t i = 0; i < nbSites; i++) {
-          // For each site in the sequence,
-          VVdouble* _d2Likelihoods_father_i = &(*_d2Likelihoods_father)[i];
-          for (size_t c = 0; c < nbClasses_; c++){
-            // For each rate classe,
-            Vdouble* _d2Likelihoods_father_i_c = &(*_d2Likelihoods_father_i)[c];
-            Vdouble* _vt_d2Likelihoods_father_i_c = &(*_vt_d2Likelihoods_father)[i][c];
-            for (size_t x = 0; x < nbStates_; x++) {
-              (*_d2Likelihoods_father_i_c)[x] +=  (*_vt_d2Likelihoods_father_i_c)[x] * vr[t]->getProbability() / getProbability();
+        #pragma omp parallel
+	      {
+	        // keren - execute the likelihood per site computation in parallel. The shared array is _likelihoods_node
+          #pragma omp for schedule(dynamic, 100)
+          for (size_t i = 0; i < nbSites; i++) {
+            // For each site in the sequence,
+            VVdouble* _d2Likelihoods_father_i = &(*_d2Likelihoods_father)[i];
+            for (size_t c = 0; c < nbClasses_; c++){
+              // For each rate classe,
+              Vdouble* _d2Likelihoods_father_i_c = &(*_d2Likelihoods_father_i)[c];
+              Vdouble* _vt_d2Likelihoods_father_i_c = &(*_vt_d2Likelihoods_father)[i][c];
+              for (size_t x = 0; x < nbStates_; x++) {
+                (*_d2Likelihoods_father_i_c)[x] +=  (*_vt_d2Likelihoods_father_i_c)[x] * vr[t]->getProbability() / getProbability();
+              }
             }
           }
         }
@@ -749,19 +780,29 @@ void RNonHomogeneousMixedTreeLikelihood::computeTransitionProbabilitiesForNode(c
   VVVdouble* pxy__node = &pxy_[node->getId()];
   for (size_t c = 0; c < nbClasses_; c++) {
     VVdouble* pxy__node_c = &(*pxy__node)[c];
-    for (size_t x = 0; x < nbStates_; x++){
-      Vdouble* pxy__node_c_x = &(*pxy__node_c)[x];
-      for (size_t y = 0; y < nbStates_; y++){
-        (*pxy__node_c_x)[y] = 0;
+    #pragma omp parallel
+	  {
+	    // keren - execute the likelihood per site computation in parallel. The shared array is _likelihoods_node
+      #pragma omp for schedule(dynamic, 100)
+      for (size_t x = 0; x < nbStates_; x++){
+        Vdouble* pxy__node_c_x = &(*pxy__node_c)[x];
+        for (size_t y = 0; y < nbStates_; y++){
+          (*pxy__node_c_x)[y] = 0;
+        }
       }
     }
 
     for (size_t i=0;i<vModel.size();i++){
       RowMatrix<double> Q = vModel[i]->getPij_t(l * rateDistribution_->getCategory(c));
-      for (size_t x = 0; x < nbStates_; x++){
-        Vdouble* pxy__node_c_x = &(*pxy__node_c)[x];
-        for (size_t y = 0; y < nbStates_; y++){
-          (*pxy__node_c_x)[y] += vProba[i] * Q(x, y);
+      #pragma omp parallel
+	    {
+	      // keren - execute the likelihood per site computation in parallel. The shared array is _likelihoods_node
+        #pragma omp for schedule(dynamic, 100)
+        for (size_t x = 0; x < nbStates_; x++){
+          Vdouble* pxy__node_c_x = &(*pxy__node_c)[x];
+          for (size_t y = 0; y < nbStates_; y++){
+            (*pxy__node_c_x)[y] += vProba[i] * Q(x, y);
+          }
         }
       }
     }
@@ -774,20 +815,30 @@ void RNonHomogeneousMixedTreeLikelihood::computeTransitionProbabilitiesForNode(c
     for (size_t c = 0; c < nbClasses_; c++){
       VVdouble* dpxy__node_c = &(*dpxy__node)[c];
       double rc = rateDistribution_->getCategory(c);
-      for (size_t x = 0; x < nbStates_; x++){
-        Vdouble* dpxy__node_c_x = &(*dpxy__node_c)[x];
-        for (size_t y = 0; y < nbStates_; y++){
-          (*dpxy__node_c_x)[y] = 0;
+      #pragma omp parallel
+	    {
+	      // keren - execute the likelihood per site computation in parallel. The shared array is _likelihoods_node
+        #pragma omp for schedule(dynamic, 100)
+        for (size_t x = 0; x < nbStates_; x++){
+          Vdouble* dpxy__node_c_x = &(*dpxy__node_c)[x];
+          for (size_t y = 0; y < nbStates_; y++){
+            (*dpxy__node_c_x)[y] = 0;
+          }
         }
       }
 
       for (size_t i=0;i<vModel.size();i++){
         RowMatrix<double> dQ = vModel[i]->getdPij_dt(l * rc);
 
-        for (size_t x = 0; x < nbStates_; x++){
-          Vdouble* dpxy__node_c_x = &(*dpxy__node_c)[x];
-          for (size_t y = 0; y < nbStates_; y++){
-            (*dpxy__node_c_x)[y] +=  vProba[i] * rc * dQ(x, y);
+        #pragma omp parallel
+	      {
+	        // keren - execute the likelihood per site computation in parallel. The shared array is _likelihoods_node
+          #pragma omp for schedule(dynamic, 100)
+          for (size_t x = 0; x < nbStates_; x++){
+            Vdouble* dpxy__node_c_x = &(*dpxy__node_c)[x];
+            for (size_t y = 0; y < nbStates_; y++){
+              (*dpxy__node_c_x)[y] +=  vProba[i] * rc * dQ(x, y);
+            }
           }
         }
       }
@@ -799,20 +850,30 @@ void RNonHomogeneousMixedTreeLikelihood::computeTransitionProbabilitiesForNode(c
     VVVdouble* d2pxy__node = &d2pxy_[node->getId()];
     for (size_t c = 0; c < nbClasses_; c++){
       VVdouble* d2pxy__node_c = &(*d2pxy__node)[c];
-      for (size_t x = 0; x < nbStates_; x++){
-        Vdouble* d2pxy__node_c_x = &(*d2pxy__node_c)[x];
-        for (size_t y = 0; y < nbStates_; y++){
-          (*d2pxy__node_c_x)[y] = 0;
+      #pragma omp parallel
+	    {
+	      // keren - execute the likelihood per site computation in parallel. The shared array is _likelihoods_node
+        #pragma omp for schedule(dynamic, 100)
+        for (size_t x = 0; x < nbStates_; x++){
+          Vdouble* d2pxy__node_c_x = &(*d2pxy__node_c)[x];
+          for (size_t y = 0; y < nbStates_; y++){
+            (*d2pxy__node_c_x)[y] = 0;
+          }
         }
       }
       
       double rc =  rateDistribution_->getCategory(c);
       for (size_t i=0;i<vModel.size();i++){
         RowMatrix<double> d2Q = vModel[i]->getd2Pij_dt2(l * rc);
-        for (size_t x = 0; x < nbStates_; x++){
-          Vdouble* d2pxy__node_c_x = &(*d2pxy__node_c)[x];
-          for (size_t y = 0; y < nbStates_; y++){
-            (*d2pxy__node_c_x)[y] +=  vProba[i] * rc * rc * d2Q(x, y);
+        #pragma omp parallel
+	      {
+	        // keren - execute the likelihood per site computation in parallel. The shared array is _likelihoods_node
+          #pragma omp for schedule(dynamic, 100)
+          for (size_t x = 0; x < nbStates_; x++){
+            Vdouble* d2pxy__node_c_x = &(*d2pxy__node_c)[x];
+            for (size_t y = 0; y < nbStates_; y++){
+              (*d2pxy__node_c_x)[y] +=  vProba[i] * rc * rc * d2Q(x, y);
+            }
           }
         }
       }
