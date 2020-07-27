@@ -251,6 +251,7 @@ double TreeTools::getHeights(const Tree& tree, int nodeId, map<int, double>& hei
 
 string TreeTools::nodeToParenthesis(const Tree& tree, int nodeId, bool writeId)
 {
+  const TreeTemplate<Node>* ttree = dynamic_cast<const TreeTemplate<Node>*>(&tree);
   if (!tree.hasNode(nodeId))
     throw NodeNotFoundException("TreeTools::nodeToParenthesis", nodeId);
   ostringstream s;
@@ -268,6 +269,8 @@ string TreeTools::nodeToParenthesis(const Tree& tree, int nodeId, bool writeId)
       s << "," << nodeToParenthesis(tree, sonsId[i], writeId);
     }
     s << ")";
+	if (ttree->getNode(nodeId)->hasName())
+		s << tree.getNodeName(nodeId);
   }
   if (writeId)
   {
@@ -280,8 +283,9 @@ string TreeTools::nodeToParenthesis(const Tree& tree, int nodeId, bool writeId)
     if (tree.hasBranchProperty(nodeId, BOOTSTRAP))
       s << (dynamic_cast<const Number<double>*>(tree.getBranchProperty(nodeId, BOOTSTRAP))->getValue());
   }
-  if (tree.hasDistanceToFather(nodeId))
+  if (tree.hasDistanceToFather(nodeId)) {
     s << ":" << tree.getDistanceToFather(nodeId);
+  }
   return s.str();
 }
 
@@ -289,6 +293,7 @@ string TreeTools::nodeToParenthesis(const Tree& tree, int nodeId, bool writeId)
 
 string TreeTools::nodeToParenthesis(const Tree& tree, int nodeId, bool bootstrap, const string& propertyName)
 {
+  const TreeTemplate<Node>* ttree = dynamic_cast<const TreeTemplate<Node>*>(&tree);
   if (!tree.hasNode(nodeId))
     throw NodeNotFoundException("TreeTools::nodeToParenthesis", nodeId);
   ostringstream s;
@@ -306,6 +311,8 @@ string TreeTools::nodeToParenthesis(const Tree& tree, int nodeId, bool bootstrap
       s << "," << nodeToParenthesis(tree, sonsId[i], bootstrap, propertyName);
     }
     s << ")";
+	if (ttree->getNode(nodeId)->hasName()) // keren - added the option of writing internal nodes names
+		s << tree.getNodeName(nodeId);
 
     if (bootstrap)
     {
@@ -318,8 +325,9 @@ string TreeTools::nodeToParenthesis(const Tree& tree, int nodeId, bool bootstrap
         s << *(dynamic_cast<const BppString*>(tree.getBranchProperty(nodeId, propertyName)));
     }
   }
-  if (tree.hasDistanceToFather(nodeId))
+  if (tree.hasDistanceToFather(nodeId)) {
     s << ":" << tree.getDistanceToFather(nodeId);
+  }
   return s.str();
 }
 
