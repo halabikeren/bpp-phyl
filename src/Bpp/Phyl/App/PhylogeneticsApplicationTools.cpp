@@ -417,6 +417,7 @@ SubstitutionModelSet* PhylogeneticsApplicationTools::getSubstitutionModelSet(
   else
     modelSet = modelSet1;
 
+  delete modelSet1; // keren - attempt to fix memory leak
   return modelSet;
 }
 
@@ -1175,6 +1176,7 @@ TreeLikelihood* PhylogeneticsApplicationTools::optimizeParameters(
     string bf = backupFile + ".def";
     rename(backupFile.c_str(), bf.c_str());
   }
+  backupListener.reset(); // keren - attempt to fix memory leak
   return tl;
 }
 
