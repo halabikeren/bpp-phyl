@@ -210,7 +210,7 @@ void JointLikelihoodFunction::updateStatesInNodesNames(Tree* mapping)
     for (auto node: nodes) 
     {
         string name = node->getName();
-        int state = stocMapping_->getNodeState(node);
+        size_t state = StochasticMapping::getNodeState(node);
         node->setName(name + "{" + TextTools::toString(state) + "}");
     }
 }
@@ -226,7 +226,7 @@ void JointLikelihoodFunction::setPartitionByHistory(Tree* history)
       int nodeId = nodes[i]->getId();
       if (nodes[i]->hasFather())
       {
-        int nodeState = stocMapping_->getNodeState(nodes[i]);
+        size_t nodeState = StochasticMapping::getNodeState(nodes[i]);
         if (nodeState == 0)
         {
             sequenceTreeLikelihood_->getSubstitutionModelSet()->setNodeToModel(0,nodeId);
@@ -697,7 +697,7 @@ void JointLikelihoodFunction::computeAlternativeJointLikelihood()
         characterTreeLikelihood_->computeTreeLikelihood();
         
         /* approximate the expected character history based on numOfMappings sampled stochastic mappings */
-        bool useAnalytic =  static_cast<bool>(ApplicationTools::getIntParameter("character.use_analytic_mapping", bppml_->getParams(), 0));
+        bool useAnalytic =  static_cast<bool>(ApplicationTools::getIntParameter("character.use_analytic_mapping", bppml_->getParams(), 1));
         vector<Tree*> mappings;
         if (debug_ & !useAnalytic)
         {
