@@ -246,11 +246,10 @@ void JointLikelihoodFunction::updatesequenceTreeLikelihood(const Tree* history)
     // extract the input for the next SequenceTreeLikelihood from the previouts one
     const VectorSiteContainer* sequenceData = dynamic_cast<const VectorSiteContainer*>(sequenceTreeLikelihood_->getData());
     MixedSubstitutionModelSet* sequenceModel = dynamic_cast<MixedSubstitutionModelSet*>(sequenceTreeLikelihood_->getSubstitutionModelSet());
-    DiscreteDistribution* rDist = RASTools::getPosteriorRateDistribution(*sequenceTreeLikelihood_);
+    DiscreteDistribution* rDist = sequenceTreeLikelihood_->getRateDistribution();
 
     // create the new sequenceTreeLikelihood
     RNonHomogeneousMixedTreeLikelihood* sequenceTreeLikelihood = new RNonHomogeneousMixedTreeLikelihood(*history, *sequenceData, sequenceModel, rDist, true, true);
-    delete rDist;
     sequenceTreeLikelihood->initialize();
 
     // delete the previous SequenceTreeLikelihood instance
