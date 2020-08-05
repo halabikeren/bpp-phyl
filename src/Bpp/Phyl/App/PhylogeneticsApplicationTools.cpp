@@ -413,11 +413,11 @@ SubstitutionModelSet* PhylogeneticsApplicationTools::getSubstitutionModelSet(
   {
     modelSet = new MixedSubstitutionModelSet(*modelSet1);
     completeMixedSubstitutionModelSet(*dynamic_cast<MixedSubstitutionModelSet*>(modelSet), alphabet, data, params, suffix, suffixIsOptional, verbose);
+    delete modelSet1; // keren - attempt to fix memory leak
   }
   else
     modelSet = modelSet1;
 
-  delete modelSet1; // keren - attempt to fix memory leak
   return modelSet;
 }
 
