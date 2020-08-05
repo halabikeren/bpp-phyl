@@ -152,7 +152,7 @@ void SubstitutionModelSet::addModel(TransitionModel* model, const std::vector<in
 
   vector<string> nplm=model->getParameters().getParameterNames();
   
-  modelParameters_.push_back(model->getParameters()); // keren - attempt to fix memory leak by removing the clone and using the roginal compy of the ParameterList
+  modelParameters_.push_back(*model->getParameters().clone()); // there is a memory leak here
   
   for (size_t i  = 0; i < nplm.size(); i++)
     {
