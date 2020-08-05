@@ -780,7 +780,7 @@ void RNonHomogeneousMixedTreeLikelihood::computeTransitionProbabilitiesForNode(c
   VVVdouble* pxy__node = &pxy_[node->getId()];
   for (size_t c = 0; c < nbClasses_; c++) {
     VVdouble* pxy__node_c = &(*pxy__node)[c];
-    #pragma omp parallel
+    #pragma omp parallel // this may risk a minor memory leak: https://stackoverflow.com/questions/4336492/memory-leak-when-using-openmp and will need to be address before integration of parallelization into Bio++ master
 	  {
 	    // keren - execute the likelihood per site computation in parallel. The shared array is _likelihoods_node
       #pragma omp for schedule(dynamic, 100)
