@@ -152,7 +152,9 @@ void SubstitutionModelSet::addModel(TransitionModel* model, const std::vector<in
 
   vector<string> nplm=model->getParameters().getParameterNames();
   
-  modelParameters_.push_back(*model->getParameters().clone()); // there is a memory leak here
+  unique_ptr<ParameterList> parameters;
+  parameters.reset(model->getParameters().clone());
+  modelParameters_.push_back(*parameters); // there is a memory leak here
   
   for (size_t i  = 0; i < nplm.size(); i++)
     {
@@ -176,6 +178,11 @@ void SubstitutionModelSet::setNodeToModel(size_t modelIndex, int nodeId)
   if (modelIndex > modelSet_.size()-1)
     throw Exception("SubstitutionModelSet::setNodesToModel. There is no Substitution Model of index " + TextTools::toString(modelIndex));
   
+  // clear previous assignment, if exists
+  map<int, size_t>::iterator it;
+  it=nodeToModel_.find(nodeId);
+  if (it != nodeToModel_.end())
+    nodeToModel_.erase (it);
   nodeToModel_[nodeId] = modelIndex;
   modelToNodes_[modelIndex].push_back(nodeId);
 }

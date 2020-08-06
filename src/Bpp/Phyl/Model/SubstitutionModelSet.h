@@ -210,11 +210,6 @@ public:
     {
       delete model;
     }
-    for (size_t p=0; p<modelParameters_.size(); ++p)
-    {
-      modelParameters_[p].reset();
-    }
-    modelParameters_.clear();
   }
 
   SubstitutionModelSet* clone() const { return new SubstitutionModelSet(*this); }
