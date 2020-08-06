@@ -331,6 +331,9 @@ unsigned int OptimizationTools::optimizeNumericalParameters2(
     optimizer->addOptimizationListener(listener);
   optimizer->init(pl);
   optimizer->optimize();
+  
+  // free
+  delete nanListener;
 
   if (verbose > 0)
     ApplicationTools::displayMessage("\n");
