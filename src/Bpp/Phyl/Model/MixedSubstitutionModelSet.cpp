@@ -245,7 +245,10 @@ void MixedSubstitutionModelSet::computeHyperNodesProbabilities()
         // sets the REAL probabilities
         for (size_t j = 0; j < fnd.size(); j++)
         {
-          pfSM->setNProbability(static_cast<size_t>(fnd[j]), h.getProbability() * pfSM->getNProbability(static_cast<size_t>(fnd[j])) / prob);
+		  if (prob == 0) // correction - do not allow division by 0
+			  pfSM->setNProbability(static_cast<size_t>(fnd[j]), h.getProbability() * pfSM->getNProbability(static_cast<size_t>(fnd[j])));
+		  else
+			pfSM->setNProbability(static_cast<size_t>(fnd[j]), h.getProbability() * pfSM->getNProbability(static_cast<size_t>(fnd[j])) / prob);
         }
       }
       
@@ -261,7 +264,10 @@ void MixedSubstitutionModelSet::computeHyperNodesProbabilities()
         const MixedSubstitutionModelSet::HyperNode::Node& fnd = h.getNode(iM);
         for (size_t j = 0; j < fnd.size(); j++)
         {
-          pfSM->setNProbability(static_cast<size_t>(fnd[j]), pfSM->getNProbability(static_cast<size_t>(fnd[j])) / h.getProbability());
+		  if (h.getProbability() == 0) // correction - do not allow division by 0
+			  pfSM->setNProbability(static_cast<size_t>(fnd[j]), pfSM->getNProbability(static_cast<size_t>(fnd[j])));
+		  else
+			  pfSM->setNProbability(static_cast<size_t>(fnd[j]), pfSM->getNProbability(static_cast<size_t>(fnd[j])) / h.getProbability());
         }
       }
     }
