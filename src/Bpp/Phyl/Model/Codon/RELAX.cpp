@@ -118,8 +118,8 @@ RELAX::RELAX(const GeneticCode* gc, FrequencySet* codonFreqs) :
   YN98_1.omega = RELAX.omega1 ^ RELAX.k  
   YN98_2.omega = RELAX.omega2 ^ RELAX.k */
   // reparameterization of omega0: RELAX.omega0 = RELAX.p*RELAX.omega1
-  addParameter_(new Parameter("RELAX.p", 0.5, std::make_shared<IntervalConstraint>(0.01, 1, true, true)));
-  addParameter_(new Parameter("RELAX.omega1", 1, std::make_shared<IntervalConstraint>(0.1, 1, true, true)));
+  addParameter_(new Parameter("RELAX.p", 0.5, std::make_shared<IntervalConstraint>(NumConstants::MILLI(), 1, true, true)));
+  addParameter_(new Parameter("RELAX.omega1", 1, std::make_shared<IntervalConstraint>(NumConstants::DECI(), 1, true, true)));
 
   // the upper bound of omega3 in its submodel is 999, so I must restrict upperBound(RELAX.omega2)^upperBound(RELAX.k)<=999 -> set maximal omega to 5  
   addParameter_(new Parameter("RELAX.omega2", 2, std::make_shared<IntervalConstraint>(1, 999, true, true)));
