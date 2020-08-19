@@ -234,21 +234,26 @@ Tree* StochasticMapping::generateAnalyticExpectedMapping(size_t divMethod)
   expectedDwellingTimes.resize(nodes.size(), VDouble(statesNum));
   map <size_t, int> alphabetStatesToModelStates; 
   size_t alphabetStatesNum = tl_->getAlphabet()->getNumberOfStates();
-  for (size_t s = 0; s<alphabetStatesNum; ++s)
+  vector<string> resolvedStates = tl_->getAlphabet()->getResolvedChars(); // here, only treat resolved states of the alphabet
+  //for (size_t s = 0; s<alphabetStatesNum; ++s)
+  for (size_t s = 0; s<resolvedStates.size(); ++s)
   {
-    int character_state_a = tl_->getAlphabet()->getStateAt(s).getNum(); // this state could represent a gap or an unknown character directly and not correspond to the set of mappable states of the alphabet
-    // special case for gaps - treat as unknown (i.e., the last state in the alphabet)    
-    if (character_state_a < 0)
+    //int character_state_a = tl_->getAlphabet()->getStateAt(s).getNum(); // this state could represent a gap or an unknown character directly and not correspond to the set of mappable states of the alphabet
+    int character_state_a = tl_->getAlphabet()->getState(resolvedStates[s]).getNum();
+	// special case for gaps - treat as unknown (i.e., the last state in the alphabet)    
+    if (character_state_a < 0) // this section should not be visited if only resolved states are regarded
       character_state_a = tl_->getAlphabet()->getStateAt(alphabetStatesNum-1).getNum();
     vector<int> alphabetCorrespondingStates_a = tl_->getAlphabet()->getAlias(character_state_a);
     for (size_t cs=0; cs<alphabetCorrespondingStates_a.size(); ++cs)
     {
       int state_a = alphabetCorrespondingStates_a[cs];
       alpha->setIndex(state_a, 1); // set the reward of the state as 1 and the reward for the rest of the states as 0
-      for (size_t m = 0; m < alphabetStatesNum; ++m)
-      {
-        int character_state_b = tl_->getAlphabet()->getStateAt(m).getNum(); // this state could represent a gap or an unknown character directly and not correspond to the set of mappable states of the alphabet
-        // special case for gaps - treat as unknown (i.e., the last state in the alphabet)
+      //for (size_t m = 0; m < alphabetStatesNum; ++m)
+      for (size_t m=0; m<resolvedStates.size(); ++m)
+	  {
+        //int character_state_b = tl_->getAlphabet()->getStateAt(m).getNum(); // this state could represent a gap or an unknown character directly and not correspond to the set of mappable states of the alphabet
+        int character_state_b = tl_->getAlphabet()->getState(resolvedStates[m]).getNum();
+		// special case for gaps - treat as unknown (i.e., the last state in the alphabet)
         if (character_state_b < 0)
           character_state_b = tl_->getAlphabet()->getStateAt(alphabetStatesNum-1).getNum();
         vector<int> alphabetCorrespondingStates_b = tl_->getAlphabet()->getAlias(character_state_b);
@@ -267,18 +272,19 @@ Tree* StochasticMapping::generateAnalyticExpectedMapping(size_t divMethod)
             }
         }
       }
-      unique_ptr<Reward> reward(new DecompositionReward(dynamic_cast<const SubstitutionModel*>(model), alpha));
+	  unique_ptr<Reward> reward(new DecompositionReward(dynamic_cast<const SubstitutionModel*>(model), alpha));
       unique_ptr<ProbabilisticRewardMapping> mapping(RewardMappingTools::computeRewardVectors(*drtl, ids, *reward, false));
-      for (size_t n = 0; n < nodes.size(); ++n)
+      
+	  for (size_t n = 0; n < nodes.size(); ++n)
       {
-        node = nodes[n];
-        if (node->hasFather()) // for any node except to the root
+		node = nodes[n];
+		if (node->hasFather()) // for any node except to the root
         {
           double dwellingTime =  mapping->getReward(node->getId(), 0);
           vector <size_t> correspondingModelStates = model->getModelStates(state_a);
           for (size_t ms=0; ms<correspondingModelStates.size(); ++ms)
             expectedDwellingTimes[nodeIdToIndex_[nodes[n]->getId()]][correspondingModelStates[ms]] = dwellingTime / static_cast<double>(correspondingModelStates.size());
-        }
+		}
       }
     }
   }
