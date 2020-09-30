@@ -1,5 +1,5 @@
 //
-// File: JointLikelihoodFunction.h
+// File: JointLikelihoodFunction.cpp
 // Created by: Keren Halabi
 // Created on: Thu Aug 28 13:14 2018
 //
@@ -60,30 +60,30 @@ using namespace std;
 
 
 class JointLikelihoodFunction:
-  public Function,
-  public AbstractParametrizable
+        public Function,
+        public AbstractParametrizable
 {
 
-  public:
+public:
     enum Hypothesis
     {
         null = 0,
         alternative = 1
     };
 
-    enum OptimizationScope 
-    { 
-      none=0, 
-      onlyCharacter=1, 
-      onlySequence=2, 
-      both=3 
+    enum OptimizationScope
+    {
+        none=0,
+        onlyCharacter=1,
+        onlySequence=2,
+        both=3
     };
 
-  private:
+private:
     Hypothesis hypothesis_;
     BppApplication* bppml_;
-    RHomogeneousTreeLikelihood* characterTreeLikelihood_; 
-    RNonHomogeneousMixedTreeLikelihood* sequenceTreeLikelihood_; 
+    RHomogeneousTreeLikelihood* characterTreeLikelihood_;
+    RNonHomogeneousMixedTreeLikelihood* sequenceTreeLikelihood_;
     map<string, double> previousParametersValues_;
     StochasticMapping* stocMapping_;
     OptimizationScope optimizationScope_;
@@ -95,8 +95,8 @@ class JointLikelihoodFunction:
     string debugDir_;
     bool debug_;
     unsigned int cycleNum_;
-  
-  protected:
+
+protected:
 
     /**
      * @brief Internal builtin function by which stsrting points are sorted in the optimization procedure
@@ -104,7 +104,7 @@ class JointLikelihoodFunction:
     static bool sortStartingPointsFunction(map<string,double> i,map<string,double> j) { return (i["Overall Log likelihood"]<j["Overall Log likelihood"]); }
 
 
-  public:
+public:
 
     /* basic functions */
 
@@ -113,44 +113,44 @@ class JointLikelihoodFunction:
 
     // copy constructor
     JointLikelihoodFunction(const JointLikelihoodFunction& jlf):
-      AbstractParametrizable(""), 
-      hypothesis_(jlf.hypothesis_),
-      bppml_(jlf.bppml_),
-      characterTreeLikelihood_(jlf.characterTreeLikelihood_->clone()),
-      sequenceTreeLikelihood_(dynamic_cast<RNonHomogeneousMixedTreeLikelihood*>(jlf.sequenceTreeLikelihood_->clone())),
-      previousParametersValues_(jlf.previousParametersValues_),
-      stocMapping_(jlf.stocMapping_->clone()),
-      optimizationScope_(jlf.optimizationScope_),
-      logl_(jlf.logl_),
-      characterChanged_(jlf.characterChanged_),
-      sequenceChanged_(jlf.sequenceChanged_),
-      previousK_(jlf.previousK_),
-      origTreeLength_(jlf.origTreeLength_),
-      debugDir_(jlf.debugDir_),
-      debug_(jlf.debug_),
-      cycleNum_(jlf.cycleNum_)
-    {   
+            AbstractParametrizable(""),
+            hypothesis_(jlf.hypothesis_),
+            bppml_(jlf.bppml_),
+            characterTreeLikelihood_(jlf.characterTreeLikelihood_->clone()),
+            sequenceTreeLikelihood_(dynamic_cast<RNonHomogeneousMixedTreeLikelihood*>(jlf.sequenceTreeLikelihood_->clone())),
+            previousParametersValues_(jlf.previousParametersValues_),
+            stocMapping_(jlf.stocMapping_->clone()),
+            optimizationScope_(jlf.optimizationScope_),
+            logl_(jlf.logl_),
+            characterChanged_(jlf.characterChanged_),
+            sequenceChanged_(jlf.sequenceChanged_),
+            previousK_(jlf.previousK_),
+            origTreeLength_(jlf.origTreeLength_),
+            debugDir_(jlf.debugDir_),
+            debug_(jlf.debug_),
+            cycleNum_(jlf.cycleNum_)
+    {
     }
 
     // assignment operator
     JointLikelihoodFunction& operator=(const JointLikelihoodFunction& jlf)
     {
-      hypothesis_ = jlf.hypothesis_;
-      bppml_ = jlf.bppml_;
-      characterTreeLikelihood_ = jlf.characterTreeLikelihood_->clone(); 
-      sequenceTreeLikelihood_ = dynamic_cast<RNonHomogeneousMixedTreeLikelihood*>(jlf.sequenceTreeLikelihood_->clone()); 
-      previousParametersValues_ = jlf.previousParametersValues_;
-      stocMapping_ = jlf.stocMapping_->clone();
-      optimizationScope_ = jlf.optimizationScope_;
-      logl_ = jlf.logl_;
-      characterChanged_ = jlf.characterChanged_;
-      sequenceChanged_ = jlf.sequenceChanged_;
-      previousK_ = jlf.previousK_;
-      origTreeLength_ = jlf.origTreeLength_;
-      debugDir_ = jlf.debugDir_;
-      debug_ = jlf.debug_;
-      cycleNum_ = jlf.cycleNum_;
-      return *this;
+        hypothesis_ = jlf.hypothesis_;
+        bppml_ = jlf.bppml_;
+        characterTreeLikelihood_ = jlf.characterTreeLikelihood_->clone();
+        sequenceTreeLikelihood_ = dynamic_cast<RNonHomogeneousMixedTreeLikelihood*>(jlf.sequenceTreeLikelihood_->clone());
+        previousParametersValues_ = jlf.previousParametersValues_;
+        stocMapping_ = jlf.stocMapping_->clone();
+        optimizationScope_ = jlf.optimizationScope_;
+        logl_ = jlf.logl_;
+        characterChanged_ = jlf.characterChanged_;
+        sequenceChanged_ = jlf.sequenceChanged_;
+        previousK_ = jlf.previousK_;
+        origTreeLength_ = jlf.origTreeLength_;
+        debugDir_ = jlf.debugDir_;
+        debug_ = jlf.debug_;
+        cycleNum_ = jlf.cycleNum_;
+        return *this;
     }
 
     // destructor
@@ -158,7 +158,7 @@ class JointLikelihoodFunction:
 
     // clone operator
     JointLikelihoodFunction* clone() const { return new JointLikelihoodFunction(*this); }
-    
+
     /* basic Function methods */
 
     /**
@@ -168,9 +168,9 @@ class JointLikelihoodFunction:
      */
     void setParameters(const ParameterList& pl)
     {
-      matchParametersValues(pl);
+        matchParametersValues(pl);
     }
-    
+
     /**
      * @brief Return the last computed log likelihood
      */
@@ -185,7 +185,7 @@ class JointLikelihoodFunction:
      * @brief Return the pointer to the sequence likelihood function
      */
     RNonHomogeneousMixedTreeLikelihood* getSequenceLikelihoodFunction() const { return sequenceTreeLikelihood_; }
- 
+
     /**
      * @brief Computes the value of the joint likelihood function depending on hypothesis - calls either computeNullJointLikelihood or computeAlternativeJointLikelihood
      * 
@@ -199,7 +199,7 @@ class JointLikelihoodFunction:
      * @brief Set the hypothesis data memeber (either null or alternative)
      */
     void setHypothesis(JointLikelihoodFunction::Hypothesis hypothesis);
-    
+
     /**
      * @brief Set the hypothesis data memeber (none / onlyCharacter / onlySequence / both)
      */
@@ -230,7 +230,7 @@ class JointLikelihoodFunction:
      * @brief Computes the joint likelihood function given the null model (that is, no change in selective pressure along the phylogeny, regardless of the character history)
      */
     void computeNullJointLikelihood();
-    
+
     /**
      * @brief Computes the joint likelihood function given the null model (that is, change in selective pressure along the phylogeny depending on the character history)
      */
@@ -271,94 +271,94 @@ class JointLikelihoodFunction:
     // all these functions use parameters_ datamember which would be empty in this case
 
     bool hasParameter(const std::string& name) const { return (characterTreeLikelihood_->hasParameter(name) || sequenceTreeLikelihood_->hasParameter(name)); }
-    
+
     const Parameter& getParameter(const std::string& name) const
     {
-      if (characterTreeLikelihood_->hasParameter(name))
-      {
-        return characterTreeLikelihood_->getParameter(name);  
-      }
-      else if (sequenceTreeLikelihood_->hasParameter(name))
-      {
-        return sequenceTreeLikelihood_->getParameter(name); 
-      }
-      else
-      {
-        throw ParameterNotFoundException("JointLikelihoodFunction::getParameter", name);
-      } 
+        if (characterTreeLikelihood_->hasParameter(name))
+        {
+            return characterTreeLikelihood_->getParameter(name);
+        }
+        else if (sequenceTreeLikelihood_->hasParameter(name))
+        {
+            return sequenceTreeLikelihood_->getParameter(name);
+        }
+        else
+        {
+            throw ParameterNotFoundException("JointLikelihoodFunction::getParameter", name);
+        }
     }
 
     const std::shared_ptr<Parameter>& getSharedParameter(const std::string& name) const
     {
-      const std::shared_ptr<Parameter>& sharedParameter1  = characterTreeLikelihood_->getSharedParameter(name);
-      if (!sharedParameter1)
-      {
-        const std::shared_ptr<Parameter>& sharedParameter2 = sequenceTreeLikelihood_->getSharedParameter(name);
-        return sharedParameter2;
-      }
-      return sharedParameter1; 
+        const std::shared_ptr<Parameter>& sharedParameter1  = characterTreeLikelihood_->getSharedParameter(name);
+        if (!sharedParameter1)
+        {
+            const std::shared_ptr<Parameter>& sharedParameter2 = sequenceTreeLikelihood_->getSharedParameter(name);
+            return sharedParameter2;
+        }
+        return sharedParameter1;
     }
 
     double getParameterValue(const std::string& name) const
-    { 
-      double parameterValue;
-      string strippedName;
-      if (name.find("TwoParameterBinary") != std::string::npos)
-      {
-        strippedName = name.substr(19);
-        parameterValue = characterTreeLikelihood_->getParameter(name).getValue();
-      }
-      else
-      {
-        parameterValue = sequenceTreeLikelihood_->getParameter(name).getValue();
-      }
-      return parameterValue;
+    {
+        double parameterValue;
+        string strippedName;
+        if (name.find("TwoParameterBinary") != std::string::npos)
+        {
+            strippedName = name.substr(19);
+            parameterValue = characterTreeLikelihood_->getParameter(name).getValue();
+        }
+        else
+        {
+            parameterValue = sequenceTreeLikelihood_->getParameter(name).getValue();
+        }
+        return parameterValue;
     }
 
     void setAllParametersValues(const ParameterList & parameters)
     {
-      characterTreeLikelihood_->setAllParametersValues(parameters);
-      sequenceTreeLikelihood_->setAllParametersValues(parameters);
-      ParameterList pl;
+        characterTreeLikelihood_->setAllParametersValues(parameters);
+        sequenceTreeLikelihood_->setAllParametersValues(parameters);
+        ParameterList pl;
     }
 
     void setParameterValue(const std::string& name, double value)
     {
-      if (name.find("TwoParameterBinary") != std::string::npos)
-      {
-        characterTreeLikelihood_->setParameterValue(name, value);
-      }
-      else
-      {
-        sequenceTreeLikelihood_->setParameterValue(name, value);
-      }
-      ParameterList pl;
+        if (name.find("TwoParameterBinary") != std::string::npos)
+        {
+            characterTreeLikelihood_->setParameterValue(name, value);
+        }
+        else
+        {
+            sequenceTreeLikelihood_->setParameterValue(name, value);
+        }
+        ParameterList pl;
     }
 
     void setParametersValues(const ParameterList& parameters)
-    { 
-      characterTreeLikelihood_->setParametersValues(parameters);
-      sequenceTreeLikelihood_->setParametersValues(parameters);
-      ParameterList pl;
-      fireParameterChanged(pl);
+    {
+        characterTreeLikelihood_->setParametersValues(parameters);
+        sequenceTreeLikelihood_->setParametersValues(parameters);
+        ParameterList pl;
+        fireParameterChanged(pl);
     }
 
     bool matchParametersValues(const ParameterList& parameters)
     {
-      characterTreeLikelihood_->matchParametersValues(parameters);
-      sequenceTreeLikelihood_->matchParametersValues(parameters);
-      ParameterList pl;
-      fireParameterChanged(pl);
-      return true;
+        characterTreeLikelihood_->matchParametersValues(parameters);
+        sequenceTreeLikelihood_->matchParametersValues(parameters);
+        ParameterList pl;
+        fireParameterChanged(pl);
+        return true;
     }
 
     size_t getNumberOfParameters() const { return (characterTreeLikelihood_->getParameters().size() + sequenceTreeLikelihood_->getParameters().size()); }
-	
-	double getSequenceScalingFactor(bool verbose = true);
-	
-	void scaleSequenceTree(double factor);
 
-  double getLikelihood();
+    double getSequenceScalingFactor(bool verbose = true);
 
-  vector<double> getLikelihoodForEachSite();
+    void scaleSequenceTree(double factor);
+
+    double getLikelihood();
+
+    vector<double> getLikelihoodForEachSite();
 };

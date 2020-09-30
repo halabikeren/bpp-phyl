@@ -51,36 +51,36 @@ using namespace std;
 /******************************************************************************/
 
 JointLikelihoodFunction::JointLikelihoodFunction(BppApplication* bppml, const Tree* tree, const VectorSiteContainer* characterData, TransitionModel* characterModel, const VectorSiteContainer* sequenceData, MixedSubstitutionModelSet* sequenceModel, DiscreteDistribution* rDist, bool debug):
-AbstractParametrizable(""), 
-hypothesis_(null),
-bppml_(bppml),
-characterTreeLikelihood_(),
-sequenceTreeLikelihood_(),
-previousParametersValues_(),
-stocMapping_(),
-optimizationScope_(none),
-logl_(0),
-characterChanged_(false),
-sequenceChanged_(false),
-previousK_(1),
-origTreeLength_(0),
-debugDir_(),
-debug_(false),
-cycleNum_(0)
+        AbstractParametrizable(""),
+        hypothesis_(null),
+        bppml_(bppml),
+        characterTreeLikelihood_(),
+        sequenceTreeLikelihood_(),
+        previousParametersValues_(),
+        stocMapping_(),
+        optimizationScope_(none),
+        logl_(0),
+        characterChanged_(false),
+        sequenceChanged_(false),
+        previousK_(1),
+        origTreeLength_(0),
+        debugDir_(),
+        debug_(false),
+        cycleNum_(0)
 {
     // get the original total tree length
     const TreeTemplate<Node>* ttree = dynamic_cast<const TreeTemplate<Node>*>(tree);
-    
+
     vector <const Node*> nodes = ttree->getNodes();
     for (size_t b=0; b<nodes.size(); ++b)
     {
         if (nodes[b]->getId() != tree->getRootId())
-        
+
         {
             origTreeLength_ = origTreeLength_ + nodes[b]->getDistanceToFather();
         }
     }
-    
+
     // create the character likelihood function as data member based on the character model, character data and tree
     RHomogeneousTreeLikelihood* characterTreeLikelihood = new RHomogeneousTreeLikelihood(*tree, *characterData, characterModel, rDist, false, true, true);
     characterTreeLikelihood->initialize();
@@ -132,17 +132,17 @@ void JointLikelihoodFunction::updatePreviousParametersValues()
     ParameterList charParams = characterTreeLikelihood_->getSubstitutionModelParameters();
     for (size_t p=0; p < charParams.size(); ++p)
     {
-       parName = charParams[p].getName();
-       parValue = charParams[p].getValue();
-       previousParametersValues_[parName] = parValue; 
+        parName = charParams[p].getName();
+        parValue = charParams[p].getValue();
+        previousParametersValues_[parName] = parValue;
     }
     // update sequence model parameters
     ParameterList seqParams = sequenceTreeLikelihood_->getSubstitutionModelParameters();
     for (size_t p=0; p < seqParams.size(); ++p)
     {
-       parName = seqParams[p].getName();
-       parValue = seqParams[p].getValue();
-       previousParametersValues_[parName] = parValue;
+        parName = seqParams[p].getName();
+        parValue = seqParams[p].getValue();
+        previousParametersValues_[parName] = parValue;
     }
     // update log likelihood 
     previousParametersValues_["logl"] = -logl_;
@@ -150,8 +150,8 @@ void JointLikelihoodFunction::updatePreviousParametersValues()
 
 /******************************************************************************/
 
-void JointLikelihoodFunction::fireParameterChanged(const ParameterList& pl) 
-{  
+void JointLikelihoodFunction::fireParameterChanged(const ParameterList& pl)
+{
     // update the characterChanged_ value
     ParameterList charParams = characterTreeLikelihood_->getModelForSite(0, 0)->getParameters();
     double currValue, prevValue;
@@ -182,15 +182,15 @@ void JointLikelihoodFunction::fireParameterChanged(const ParameterList& pl)
 
     /* if a character parameter was changed -> call computeAlternativeJointLikelihood without sequence model optimization
        else, the changed paramet der must be the boolean distating that the sequence model should be optimized */
-	switch(hypothesis_)
+    switch(hypothesis_)
     {
-        case null: 
-            computeNullJointLikelihood(); 
+        case null:
+            computeNullJointLikelihood();
             break;
-        case alternative: 
-            computeAlternativeJointLikelihood(); 
+        case alternative:
+            computeAlternativeJointLikelihood();
             break;
-        default: 
+        default:
             throw Exception("Error! illegal hypothesis setting");
     }
 
@@ -206,8 +206,8 @@ void JointLikelihoodFunction::fireParameterChanged(const ParameterList& pl)
 void JointLikelihoodFunction::updateStatesInNodesNames(Tree* mapping)
 {
     string label = "state";
-    vector<Node*> nodes = (dynamic_cast<TreeTemplate<Node>*>(mapping))->getNodes(); 
-    for (auto node: nodes) 
+    vector<Node*> nodes = (dynamic_cast<TreeTemplate<Node>*>(mapping))->getNodes();
+    for (auto node: nodes)
     {
         string name = node->getName();
         size_t state = StochasticMapping::getNodeState(node);
@@ -223,19 +223,19 @@ void JointLikelihoodFunction::setPartitionByHistory(Tree* history)
     vector<const Node*> nodes = (dynamic_cast<const TreeTemplate<Node>*>(history))->getNodes();
     for (size_t i=0; i<nodes.size(); ++i)
     {
-      int nodeId = nodes[i]->getId();
-      if (nodes[i]->hasFather())
-      {
-        size_t nodeState = StochasticMapping::getNodeState(nodes[i]);
-        if (nodeState == 0)
+        int nodeId = nodes[i]->getId();
+        if (nodes[i]->hasFather())
         {
-            sequenceTreeLikelihood_->getSubstitutionModelSet()->setNodeToModel(0,nodeId);
-        }    
-        else
-        {
-            sequenceTreeLikelihood_->getSubstitutionModelSet()->setNodeToModel(1,nodeId);
+            size_t nodeState = StochasticMapping::getNodeState(nodes[i]);
+            if (nodeState == 0)
+            {
+                sequenceTreeLikelihood_->getSubstitutionModelSet()->setNodeToModel(0,nodeId);
+            }
+            else
+            {
+                sequenceTreeLikelihood_->getSubstitutionModelSet()->setNodeToModel(1,nodeId);
+            }
         }
-      }
     }
 }
 
@@ -287,12 +287,12 @@ double JointLikelihoodFunction::getSequenceScalingFactor(bool verbose)
 void JointLikelihoodFunction::scaleSequenceTree(double factor)
 {
     // get a new tree and scale it
-	const Tree& origTree = characterTreeLikelihood_->getTree(); // the character tree is taken because it was not affected by any previous scaling
-	Tree* newTree = origTree.clone();
-	(dynamic_cast<TreeTemplate<Node>*>(newTree))->scaleTree(factor);
+    const Tree& origTree = characterTreeLikelihood_->getTree(); // the character tree is taken because it was not affected by any previous scaling
+    Tree* newTree = origTree.clone();
+    (dynamic_cast<TreeTemplate<Node>*>(newTree))->scaleTree(factor);
     // switch the new tree with the ols tree in the sequence likelihood function
     updatesequenceTreeLikelihood(newTree);;
-	getSequenceScalingFactor(true); // for debugging
+    getSequenceScalingFactor(true); // for debugging
 }
 
 /******************************************************************************/
@@ -301,8 +301,8 @@ map<string,double> JointLikelihoodFunction::getModelParameters(bool verbose)
 {
     map<string,double> modelParameters;
     ParameterList parameters;
-	
-	// character model parameters
+
+    // character model parameters
     TransitionModel* characterModel = characterTreeLikelihood_->getModel();
     parameters = characterModel->getParameters();
     for (size_t i = 0; i < parameters.size(); i++)
@@ -314,43 +314,43 @@ map<string,double> JointLikelihoodFunction::getModelParameters(bool verbose)
         modelParameters[parameters[i].getName()] = parameters[i].getValue();
     }
 
-  // sequence model parameters
-  MixedSubstitutionModelSet* sequenceModel = dynamic_cast<MixedSubstitutionModelSet*>(sequenceTreeLikelihood_->getSubstitutionModelSet());
-  for (size_t m = 0; m < sequenceModel->getNumberOfModels(); ++m) {
-    if (verbose)
-      ApplicationTools::displayMessage("\nmodel " + TextTools::toString(m+1) + "\n");
-    TransitionModel* model = sequenceModel->getModel(m);
-    parameters = model->getParameters();
-    for (size_t i = 0; i < parameters.size(); i++)
-    {
-      if (verbose)
-        ApplicationTools::displayResult(parameters[i].getName(), TextTools::toString(parameters[i].getValue()));
-      if (((parameters[i].getName().compare("RELAX.k") == 0) & (m == 1)) | ((parameters[i].getName().compare("RELAX.k") != 0) & (m == 0)))
-        modelParameters[parameters[i].getName() + "_" + TextTools::toString(m+1)] = parameters[i].getValue();
+    // sequence model parameters
+    MixedSubstitutionModelSet* sequenceModel = dynamic_cast<MixedSubstitutionModelSet*>(sequenceTreeLikelihood_->getSubstitutionModelSet());
+    for (size_t m = 0; m < sequenceModel->getNumberOfModels(); ++m) {
+        if (verbose)
+            ApplicationTools::displayMessage("\nmodel " + TextTools::toString(m+1) + "\n");
+        TransitionModel* model = sequenceModel->getModel(m);
+        parameters = model->getParameters();
+        for (size_t i = 0; i < parameters.size(); i++)
+        {
+            if (verbose)
+                ApplicationTools::displayResult(parameters[i].getName(), TextTools::toString(parameters[i].getValue()));
+            if (((parameters[i].getName().compare("RELAX.k") == 0) & (m == 1)) | ((parameters[i].getName().compare("RELAX.k") != 0) & (m == 0)))
+                modelParameters[parameters[i].getName() + "_" + TextTools::toString(m+1)] = parameters[i].getValue();
+        }
     }
-  }
 
-  // get the sequence scaling factor
-  modelParameters["sequenceScalingFactor"] = getSequenceScalingFactor(false);
-  if (verbose)
-	ApplicationTools::displayResult("Sequence scaling factor",  TextTools::toString(modelParameters["sequenceScalingFactor"]));
+    // get the sequence scaling factor
+    modelParameters["sequenceScalingFactor"] = getSequenceScalingFactor(false);
+    if (verbose)
+        ApplicationTools::displayResult("Sequence scaling factor",  TextTools::toString(modelParameters["sequenceScalingFactor"]));
 
-  // get the likelihood
-  double characterLogl = characterTreeLikelihood_->getValue();
-  modelParameters["Character Log likelihood"] = characterLogl;
-  double sequenceLogl = sequenceTreeLikelihood_->getValue();
-  modelParameters["Sequence Log likelihood"] = sequenceLogl;
-  logl_ = characterLogl + sequenceLogl;
-  modelParameters["Overall Log likelihood"] = logl_;
+    // get the likelihood
+    double characterLogl = characterTreeLikelihood_->getValue();
+    modelParameters["Character Log likelihood"] = characterLogl;
+    double sequenceLogl = sequenceTreeLikelihood_->getValue();
+    modelParameters["Sequence Log likelihood"] = sequenceLogl;
+    logl_ = characterLogl + sequenceLogl;
+    modelParameters["Overall Log likelihood"] = logl_;
 
-  // report it regardless of verbose level
-  if (verbose)
-  {
-	ApplicationTools::displayResult("\nCharacter Log likelihood", TextTools::toString(-characterLogl, 15));
-	ApplicationTools::displayResult("Sequence Log likelihood", TextTools::toString(-sequenceLogl, 15));
-	ApplicationTools::displayResult("Overall Log likelihood", TextTools::toString(-logl_, 15));
-  }
-  return modelParameters;
+    // report it regardless of verbose level
+    if (verbose)
+    {
+        ApplicationTools::displayResult("\nCharacter Log likelihood", TextTools::toString(-characterLogl, 15));
+        ApplicationTools::displayResult("Sequence Log likelihood", TextTools::toString(-sequenceLogl, 15));
+        ApplicationTools::displayResult("Overall Log likelihood", TextTools::toString(-logl_, 15));
+    }
+    return modelParameters;
 }
 
 /*****************************************************************************/
@@ -358,15 +358,15 @@ map<string,double> JointLikelihoodFunction::getModelParameters(bool verbose)
 void JointLikelihoodFunction::optimizeSequenceModel()
 {
     unsigned int verbose = static_cast<unsigned int>(ApplicationTools::getIntParameter("optimization.verbose", bppml_->getParams(), 0));
-	if (verbose)
-		cout << "** Optimzing the sequence model **" << endl;
+    if (verbose)
+        cout << "** Optimzing the sequence model **" << endl;
 
-	// reset the parameters to ignore
-	bppml_->getParam("optimization.ignore_parameters") = "BrLen";
-	// now set the addional parameters you would like to ignore
-	string initialParamsToIgnore = ApplicationTools::getStringParameter("optimization.ignore_parameters_additonal", bppml_->getParams(), "", "", true, true);
+    // reset the parameters to ignore
+    bppml_->getParam("optimization.ignore_parameters") = "BrLen";
+    // now set the addional parameters you would like to ignore
+    string initialParamsToIgnore = ApplicationTools::getStringParameter("optimization.ignore_parameters_additonal", bppml_->getParams(), "", "", true, true);
     string paramsToIgnore;
-	bool isAlternative = false;
+    bool isAlternative = false;
     // extract the user initial values sd initial starting point
     string BGModelInitialValues = ApplicationTools::getStringParameter("model1", bppml_->getParams(), "RELAX(kappa=RELAX.kappa_1,p=RELAX.p_1,omega1=RELAX.omega1_1,omega2=RELAX.omega2_1,theta1=RELAX.theta1_1,theta2=RELAX.theta2_1)", "", true, true);
     string FGModelInitialValues = ApplicationTools::getStringParameter("model2", bppml_->getParams(), "RELAX(kappa=RELAX.kappa_1,p=RELAX.p_1,omega1=RELAX.omega1_1,omega2=RELAX.omega2_1,theta1=RELAX.theta1_1,theta2=RELAX.theta2_1)", "", true, true);
@@ -376,20 +376,20 @@ void JointLikelihoodFunction::optimizeSequenceModel()
     KeyvalTools::parseProcedure(FGModelInitialValues, modelName, FGArgs);
     map<string,double> userInitialValues;
     for (map<string, string>::iterator it = BGArgs.begin(); it != BGArgs.end(); it++)
-	{
-		if (it->first.compare("frequencies") !=0)
-			userInitialValues[modelName + "." + it->first + "_1"] = TextTools::toDouble(it->second);
+    {
+        if (it->first.compare("frequencies") !=0)
+            userInitialValues[modelName + "." + it->first + "_1"] = TextTools::toDouble(it->second);
     }
     userInitialValues[modelName + ".k_2"] = TextTools::toDouble(FGArgs["k"]);
     switch(hypothesis_)
     {
-        case null: 
+        case null:
             // set the value of RELAX.k_2 to 1 as well and then ignore
             sequenceTreeLikelihood_->setParameterValue("RELAX.k_2", 1);
             // now add RELAX.k_2 to the set of parameters to ignore
             paramsToIgnore = initialParamsToIgnore + ",BrLen,RELAX.k_1,RELAX.k_2";
             break;      // k = 1 both in model1 (BG) and model2 (FG)
-        case alternative: 
+        case alternative:
             cycleNum_ = cycleNum_ + 1;
             isAlternative = true;
             paramsToIgnore = initialParamsToIgnore + ",BrLen,RELAX.k_1,RELAX.1_Full.theta_1,RELAX.1_Full.theta1_1,RELAX.1_Full.theta2_1,RELAX.2_Full.theta_1,RELAX.2_Full.theta1_1,RELAX.2_Full.theta2_1,RELAX.3_Full.theta_1,RELAX.3_Full.theta1_1,RELAX.3_Full.theta2_1"; // ignore frequency parameters to reduce optimization duration - results in one unit of ll reduction in optimality and 1 minutre reduction in duration
@@ -398,7 +398,7 @@ void JointLikelihoodFunction::optimizeSequenceModel()
             throw Exception("Error! illegal hypothesis setting");
     }
     bppml_->getParam("optimization.ignore_parameters") = paramsToIgnore;
-	// first optimize the scaling parameter: 0 = don't scale, 1 - scale only before optimization, 2 - scale only after optimization, 3 - scale before and after optimization
+    // first optimize the scaling parameter: 0 = don't scale, 1 - scale only before optimization, 2 - scale only after optimization, 3 - scale before and after optimization
     int scaleTree = ApplicationTools::getIntParameter("optimization.scale.tree", bppml_->getParams(), 0);
     if (scaleTree >= 1)
     {
@@ -408,9 +408,9 @@ void JointLikelihoodFunction::optimizeSequenceModel()
 
     // now optimize the rest of parameters
     map<string,double> inferenceResult;
-	int advancedOptimization = ApplicationTools::getIntParameter("optimization.advanced", bppml_->getParams(), 0);
+    int advancedOptimization = ApplicationTools::getIntParameter("optimization.advanced", bppml_->getParams(), 0);
     double prevLogLikelihood, currLogLikelihood;
-	size_t index;
+    size_t index;
     if ((advancedOptimization == 1) & (isAlternative))
     {
         bppml_->getParam("optimization.max_number_f_eval") = "100";
@@ -418,68 +418,68 @@ void JointLikelihoodFunction::optimizeSequenceModel()
         if (cycleNum_ == 0)
         {
             // starting point 1 - results of the null fitting
-			prevLogLikelihood = -sequenceTreeLikelihood_->getValue();
-			currLogLikelihood = -sequenceTreeLikelihood_->getValue();
-			index = 1;
-			do
-			{
-				cout << "Optimization cycle: " << TextTools::toString(index) << endl;
-				index = index + 1;
-				if (scaleTree >= 1)
-				{
-					OptimizationTools::optimizeTreeScale(sequenceTreeLikelihood_, 0.000001, 1000000, ApplicationTools::message.get(), ApplicationTools::message.get(), 0);
-					getSequenceScalingFactor(); // debug
-				}
-				PhylogeneticsApplicationTools::optimizeParameters(sequenceTreeLikelihood_, sequenceTreeLikelihood_->getParameters(), bppml_->getParams());
-				ApplicationTools::displayResult("Current log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));
-				prevLogLikelihood = currLogLikelihood;
-				currLogLikelihood = -sequenceTreeLikelihood_->getValue();
-				ApplicationTools::displayResult("Current diff", TextTools::toString((currLogLikelihood-prevLogLikelihood), 15));
-			} while (currLogLikelihood - prevLogLikelihood > 0.01);
-			if (verbose)
+            prevLogLikelihood = -sequenceTreeLikelihood_->getValue();
+            currLogLikelihood = -sequenceTreeLikelihood_->getValue();
+            index = 1;
+            do
+            {
+                cout << "Optimization cycle: " << TextTools::toString(index) << endl;
+                index = index + 1;
+                if (scaleTree >= 1)
+                {
+                    OptimizationTools::optimizeTreeScale(sequenceTreeLikelihood_, 0.000001, 1000000, ApplicationTools::message.get(), ApplicationTools::message.get(), 0);
+                    getSequenceScalingFactor(); // debug
+                }
+                PhylogeneticsApplicationTools::optimizeParameters(sequenceTreeLikelihood_, sequenceTreeLikelihood_->getParameters(), bppml_->getParams());
+                ApplicationTools::displayResult("Current log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));
+                prevLogLikelihood = currLogLikelihood;
+                currLogLikelihood = -sequenceTreeLikelihood_->getValue();
+                ApplicationTools::displayResult("Current diff", TextTools::toString((currLogLikelihood-prevLogLikelihood), 15));
+            } while (currLogLikelihood - prevLogLikelihood > 0.01);
+            if (verbose)
             {
                 cout << "iterative optimzation complete" << endl;
                 ApplicationTools::displayResult("Log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));
             }
-			double sp1Logl = -sequenceTreeLikelihood_->getValue();
+            double sp1Logl = -sequenceTreeLikelihood_->getValue();
             if (verbose)
             {
                 cout << "* Statring point: null fitting result *" << endl;
                 ApplicationTools::displayResult("Log likelihood", TextTools::toString(sp1Logl, 15));
             }
             map<string, double> sp1Result = getModelParameters(verbose); // debug - print model parameters
-            
+
             // starting point 2 - user initial values
             for (map<string, double>::iterator it = userInitialValues.begin(); it != userInitialValues.end(); it++)
             {
-				if ((it->first.find("RELAX") != std::string::npos))
-				{
-					sequenceTreeLikelihood_->setParameterValue(it->first, it->second);
-				}
+                if ((it->first.find("RELAX") != std::string::npos))
+                {
+                    sequenceTreeLikelihood_->setParameterValue(it->first, it->second);
+                }
             }
-						prevLogLikelihood = -sequenceTreeLikelihood_->getValue();
-			currLogLikelihood = -sequenceTreeLikelihood_->getValue();
-			index = 1;
-			do
-			{
-				if (verbose)
+            prevLogLikelihood = -sequenceTreeLikelihood_->getValue();
+            currLogLikelihood = -sequenceTreeLikelihood_->getValue();
+            index = 1;
+            do
+            {
+                if (verbose)
                     cout << "Optimization cycle: " << TextTools::toString(index) << endl;
-				index = index + 1;
-				if (scaleTree >= 1)
-				{
-					OptimizationTools::optimizeTreeScale(sequenceTreeLikelihood_, 0.000001, 1000000, ApplicationTools::message.get(), ApplicationTools::message.get(), 0);
-					getSequenceScalingFactor(); // debug
-				}
-				PhylogeneticsApplicationTools::optimizeParameters(sequenceTreeLikelihood_, sequenceTreeLikelihood_->getParameters(), bppml_->getParams());
-				ApplicationTools::displayResult("Current log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));
-				prevLogLikelihood = currLogLikelihood;
-				currLogLikelihood = -sequenceTreeLikelihood_->getValue();
-				ApplicationTools::displayResult("Current diff", TextTools::toString((currLogLikelihood-prevLogLikelihood), 15));
-			} while (currLogLikelihood - prevLogLikelihood > 0.01);
-			if (verbose)
+                index = index + 1;
+                if (scaleTree >= 1)
+                {
+                    OptimizationTools::optimizeTreeScale(sequenceTreeLikelihood_, 0.000001, 1000000, ApplicationTools::message.get(), ApplicationTools::message.get(), 0);
+                    getSequenceScalingFactor(); // debug
+                }
+                PhylogeneticsApplicationTools::optimizeParameters(sequenceTreeLikelihood_, sequenceTreeLikelihood_->getParameters(), bppml_->getParams());
+                ApplicationTools::displayResult("Current log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));
+                prevLogLikelihood = currLogLikelihood;
+                currLogLikelihood = -sequenceTreeLikelihood_->getValue();
+                ApplicationTools::displayResult("Current diff", TextTools::toString((currLogLikelihood-prevLogLikelihood), 15));
+            } while (currLogLikelihood - prevLogLikelihood > 0.01);
+            if (verbose)
             {
                 cout << "iterative optimzation complete" << endl;
-			    ApplicationTools::displayResult("Log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));
+                ApplicationTools::displayResult("Log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));
             }
             double sp2Logl = -sequenceTreeLikelihood_->getValue();
             if (verbose)
@@ -488,14 +488,14 @@ void JointLikelihoodFunction::optimizeSequenceModel()
                 ApplicationTools::displayResult("Log likelihood", TextTools::toString(sp2Logl, 15));
             }
             map<string, double> sp2Result = getModelParameters(verbose); // debug - print model parameters
-            
+
             // determine the winning starting point
             map<string, double> chosenInitialValues = sp1Result;
             if (sp1Logl < sp2Logl)
             {
-            if (verbose)
-                cout << "Winning starting point: user initial values " << endl;
-            chosenInitialValues = sp2Result;
+                if (verbose)
+                    cout << "Winning starting point: user initial values " << endl;
+                chosenInitialValues = sp2Result;
             }
             else
             {
@@ -512,11 +512,11 @@ void JointLikelihoodFunction::optimizeSequenceModel()
                 }
             }
         }
-        
+
         vector<size_t> startingPointsByCycle = ApplicationTools::getVectorParameter<size_t>("optimization.starting_points_by_cycle", bppml_->getParams(), ',', "10,3,1", "", true);
         size_t numberOfCycles = startingPointsByCycle.size();
 
-		/* step 1: fist cycle of optimizaton: only compute the likelihood over multiple starting points with respect to k */
+        /* step 1: fist cycle of optimizaton: only compute the likelihood over multiple starting points with respect to k */
         // set the starting points with respect to the value of k according to the number given in startingPointsByCycle[0]
         if (verbose)
             cout << "** Step 1: choosing initial starting points from a selection of " << startingPointsByCycle[0] << " points **" << endl;
@@ -545,14 +545,14 @@ void JointLikelihoodFunction::optimizeSequenceModel()
         // compute the likelihood of the starting points
         vector<map<string,double>> startingPointsResults;
         startingPointsResults.clear();
-        startingPointsResults.resize(startingPointsByCycle[0]); 
+        startingPointsResults.resize(startingPointsByCycle[0]);
         for (size_t l=0; l<startingPointsByCycle[0]; ++l)
         {
             sequenceTreeLikelihood_->setParameterValue("RELAX.k_2", startingPoints[l]);
             sequenceTreeLikelihood_->computeTreeLikelihood();
             startingPointsResults[l] = getModelParameters(verbose);
         }
-        
+
         /* step 2: iteratively optimize superficially the best starting points */
         if (verbose)
             cout << "** Step 2: iteratively optimizing superficially the best starting points for " << numberOfCycles-2 << " cycles **" << endl;
@@ -583,34 +583,34 @@ void JointLikelihoodFunction::optimizeSequenceModel()
                 }
                 if (verbose)
                     cout << "Optimizing starting point " << (p+1) << "..." << endl;
-				prevLogLikelihood = -sequenceTreeLikelihood_->getValue();
-				currLogLikelihood = -sequenceTreeLikelihood_->getValue();
-				index = 1;
-				do
-				{
-					if (verbose)
+                prevLogLikelihood = -sequenceTreeLikelihood_->getValue();
+                currLogLikelihood = -sequenceTreeLikelihood_->getValue();
+                index = 1;
+                do
+                {
+                    if (verbose)
                         cout << "Optimization cycle: " << TextTools::toString(index) << endl;
-					index = index + 1;
-					if (scaleTree >= 1)
-					{
-						OptimizationTools::optimizeTreeScale(sequenceTreeLikelihood_, 0.000001, 1000000, ApplicationTools::message.get(), ApplicationTools::message.get(), 0);
-						getSequenceScalingFactor(); // debug
-					}
-					PhylogeneticsApplicationTools::optimizeParameters(sequenceTreeLikelihood_, sequenceTreeLikelihood_->getParameters(), bppml_->getParams());
-					if (verbose)
+                    index = index + 1;
+                    if (scaleTree >= 1)
+                    {
+                        OptimizationTools::optimizeTreeScale(sequenceTreeLikelihood_, 0.000001, 1000000, ApplicationTools::message.get(), ApplicationTools::message.get(), 0);
+                        getSequenceScalingFactor(); // debug
+                    }
+                    PhylogeneticsApplicationTools::optimizeParameters(sequenceTreeLikelihood_, sequenceTreeLikelihood_->getParameters(), bppml_->getParams());
+                    if (verbose)
                         ApplicationTools::displayResult("Current log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));
-					prevLogLikelihood = currLogLikelihood;
-					currLogLikelihood = -sequenceTreeLikelihood_->getValue();
-					if (verbose)
+                    prevLogLikelihood = currLogLikelihood;
+                    currLogLikelihood = -sequenceTreeLikelihood_->getValue();
+                    if (verbose)
                         ApplicationTools::displayResult("Current diff", TextTools::toString((currLogLikelihood-prevLogLikelihood), 15));
-				} while (currLogLikelihood - prevLogLikelihood > 0.01);
-				if (verbose)
+                } while (currLogLikelihood - prevLogLikelihood > 0.01);
+                if (verbose)
                     cout << "iterative optimzation complete" << endl;
-				ApplicationTools::displayResult("Log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));
-				bestStartingPoints[p] = getModelParameters(verbose);
+                ApplicationTools::displayResult("Log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));
+                bestStartingPoints[p] = getModelParameters(verbose);
             }
             startingPointsResults.clear();
-            startingPointsResults = bestStartingPoints; 
+            startingPointsResults = bestStartingPoints;
         }
 
         /* step 3: deep optimization of the best startingPointsByCycle[startingPointsByCycle.size()-1] starting points */
@@ -635,64 +635,64 @@ void JointLikelihoodFunction::optimizeSequenceModel()
             }
             if (verbose)
                 cout << "Optimizing starting point " << (p+1) << endl;
-			prevLogLikelihood = -sequenceTreeLikelihood_->getValue();
-			currLogLikelihood = -sequenceTreeLikelihood_->getValue();
-			index = 1;
-			do
-			{
-				if (verbose)
+            prevLogLikelihood = -sequenceTreeLikelihood_->getValue();
+            currLogLikelihood = -sequenceTreeLikelihood_->getValue();
+            index = 1;
+            do
+            {
+                if (verbose)
                     cout << "Optimization cycle: " << TextTools::toString(index) << endl;
-				index = index + 1;
-				if (scaleTree >= 1)
-				{
-					OptimizationTools::optimizeTreeScale(sequenceTreeLikelihood_, 0.000001, 1000000, ApplicationTools::message.get(), ApplicationTools::message.get(), 0);
-					getSequenceScalingFactor(); // debug
-				}
-				PhylogeneticsApplicationTools::optimizeParameters(sequenceTreeLikelihood_, sequenceTreeLikelihood_->getParameters(), bppml_->getParams());
-				if (verbose)
+                index = index + 1;
+                if (scaleTree >= 1)
+                {
+                    OptimizationTools::optimizeTreeScale(sequenceTreeLikelihood_, 0.000001, 1000000, ApplicationTools::message.get(), ApplicationTools::message.get(), 0);
+                    getSequenceScalingFactor(); // debug
+                }
+                PhylogeneticsApplicationTools::optimizeParameters(sequenceTreeLikelihood_, sequenceTreeLikelihood_->getParameters(), bppml_->getParams());
+                if (verbose)
                     ApplicationTools::displayResult("Current log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));
-				prevLogLikelihood = currLogLikelihood;
-				currLogLikelihood = -sequenceTreeLikelihood_->getValue();
-				if (verbose)
+                prevLogLikelihood = currLogLikelihood;
+                currLogLikelihood = -sequenceTreeLikelihood_->getValue();
+                if (verbose)
                     ApplicationTools::displayResult("Current diff", TextTools::toString((currLogLikelihood-prevLogLikelihood), 15));
-			} while (currLogLikelihood - prevLogLikelihood > 0.01);
-			if (verbose)
+            } while (currLogLikelihood - prevLogLikelihood > 0.01);
+            if (verbose)
             {
                 cout << "iterative optimzation complete" << endl;
-			    ApplicationTools::displayResult("Log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));bestStartingPoints[p] = getModelParameters(verbose);
+                ApplicationTools::displayResult("Log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));bestStartingPoints[p] = getModelParameters(verbose);
             }
         }
 
-        /* step 4: select the best starting point and report its values */ 
+        /* step 4: select the best starting point and report its values */
         sort(bestStartingPoints.begin(), bestStartingPoints.end(), sortStartingPointsFunction);
         inferenceResult = bestStartingPoints[0];
     }
-	else
+    else
     {
-		prevLogLikelihood = -sequenceTreeLikelihood_->getValue();
-		currLogLikelihood = -sequenceTreeLikelihood_->getValue();
-		index = 1;
-		do
-		{
-			if (verbose)
+        prevLogLikelihood = -sequenceTreeLikelihood_->getValue();
+        currLogLikelihood = -sequenceTreeLikelihood_->getValue();
+        index = 1;
+        do
+        {
+            if (verbose)
                 cout << "Optimization cycle: " << TextTools::toString(index) << endl;
-			index = index + 1;
-			if (scaleTree >= 1)
-			{
-				OptimizationTools::optimizeTreeScale(sequenceTreeLikelihood_, 0.000001, 1000000, ApplicationTools::message.get(), ApplicationTools::message.get(), 0);
-				getSequenceScalingFactor(); // debug
-			}
-			PhylogeneticsApplicationTools::optimizeParameters(sequenceTreeLikelihood_, sequenceTreeLikelihood_->getParameters(), bppml_->getParams());
-			if (verbose)
+            index = index + 1;
+            if (scaleTree >= 1)
+            {
+                OptimizationTools::optimizeTreeScale(sequenceTreeLikelihood_, 0.000001, 1000000, ApplicationTools::message.get(), ApplicationTools::message.get(), 0);
+                getSequenceScalingFactor(); // debug
+            }
+            PhylogeneticsApplicationTools::optimizeParameters(sequenceTreeLikelihood_, sequenceTreeLikelihood_->getParameters(), bppml_->getParams());
+            if (verbose)
                 ApplicationTools::displayResult("Current log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));
-			prevLogLikelihood = currLogLikelihood;
-			currLogLikelihood = -sequenceTreeLikelihood_->getValue();
-			if (verbose)
+            prevLogLikelihood = currLogLikelihood;
+            currLogLikelihood = -sequenceTreeLikelihood_->getValue();
+            if (verbose)
                 ApplicationTools::displayResult("Current diff", TextTools::toString((currLogLikelihood-prevLogLikelihood), 15));
-		} while (currLogLikelihood - prevLogLikelihood > 0.01);
-		if (verbose)
+        } while (currLogLikelihood - prevLogLikelihood > 0.01);
+        if (verbose)
             cout << "iterative optimzation complete" << endl;
-		ApplicationTools::displayResult("Log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));
+        ApplicationTools::displayResult("Log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));
         inferenceResult = getModelParameters(verbose);
     }
 
@@ -702,15 +702,15 @@ void JointLikelihoodFunction::optimizeSequenceModel()
         if ((it->first.find("RELAX") != std::string::npos))
         {
             sequenceTreeLikelihood_->setParameterValue(it->first, it->second);
-        }  
+        }
     }
     sequenceTreeLikelihood_->computeTreeLikelihood();
-	if (verbose)
-	{
-		cout << "\n** Model parameters after sequence model optimizaiton ** " << endl;
-		getModelParameters(verbose);
-	}
-	
+    if (verbose)
+    {
+        cout << "\n** Model parameters after sequence model optimizaiton ** " << endl;
+        getModelParameters(verbose);
+    }
+
     // update the log likelihood of the joint model
     double charLogL = characterTreeLikelihood_->getValue();
     double seqLogL = sequenceTreeLikelihood_->getValue();
@@ -721,15 +721,15 @@ void JointLikelihoodFunction::optimizeSequenceModel()
 /******************************************************************************/
 
 void JointLikelihoodFunction::computeAlternativeJointLikelihood()
-{  
+{
 
-	unsigned int verbose = static_cast<unsigned int>(ApplicationTools::getIntParameter("optimization.verbose", bppml_->getParams(), 0));
-	
+    unsigned int verbose = static_cast<unsigned int>(ApplicationTools::getIntParameter("optimization.verbose", bppml_->getParams(), 0));
+
     if (characterChanged_)
     {
         /* compute likelihood of charcter model */
         characterTreeLikelihood_->computeTreeLikelihood();
-        
+
         /* approximate the expected character history based on numOfMappings sampled stochastic mappings */
         bool useAnalytic =  static_cast<bool>(ApplicationTools::getIntParameter("character.use_analytic_mapping", bppml_->getParams(), 1));
         vector<Tree*> mappings;
@@ -779,10 +779,10 @@ void JointLikelihoodFunction::computeAlternativeJointLikelihood()
             cout << "Computing sequence log likelihoods given the different mappings\n" << endl;
             for (size_t h=0; h<mappings.size(); ++h)
             {
-                    setPartitionByHistory(mappings[h]); // induce a partition of the tree based on the epxected character history
-                    updatesequenceTreeLikelihood(mappings[h]); // compute the likelihood given the mapping
-                    cout << TextTools::toString(-characterTreeLikelihood_->getValue() - sequenceTreeLikelihood_->getValue(), 15) << endl;
-            
+                setPartitionByHistory(mappings[h]); // induce a partition of the tree based on the epxected character history
+                updatesequenceTreeLikelihood(mappings[h]); // compute the likelihood given the mapping
+                cout << TextTools::toString(-characterTreeLikelihood_->getValue() - sequenceTreeLikelihood_->getValue(), 15) << endl;
+
             }
             // the computation in exhaustive approximation will be done via python 
             bppml_->done();
@@ -834,11 +834,11 @@ void JointLikelihoodFunction::computeAlternativeJointLikelihood()
             string treeStr = TreeTools::treeToParenthesis(*clonedExpectedHistory);
             string filepath = debugDir_ + TextTools::toString(numOfMappings) + "_" + method + "_expected_mapping.nwk";
             ofstream file (filepath);
-            
+
             file << treeStr << "\n";
             if (useAnalytic)
             {
-                cout << "tree:\n" << treeStr << endl; 
+                cout << "tree:\n" << treeStr << endl;
             }
             if (clonedExpectedHistory) delete clonedExpectedHistory; // delete the clone
             file.close();
@@ -848,62 +848,62 @@ void JointLikelihoodFunction::computeAlternativeJointLikelihood()
         /* compute the likelihood of the sequence model */
         setPartitionByHistory(expectedHistory);         // induce a partition of the tree based on the epxected character history
         updatesequenceTreeLikelihood(expectedHistory);  // update the tree of the sequence likelihood function to be the expected history and then compute the likelihood
-		sequenceChanged_ = true; 						// since the partition changed, the sequence likelihood has also changed
-	
-		/* free resources - now some of these parameters were defined localy - need to use friend functions otherwise can't free it */
-		size_t numOfMappings = mappings.size();
-		for (size_t h=0; h<numOfMappings; ++h)
-		{
-			if  (mappings[h]) delete mappings[h];
-		}
-		
-		if (expectedHistory) delete expectedHistory; // delete the expectedHistory, that was cloned via updatesequenceTreeLikelihood
+        sequenceChanged_ = true; 						// since the partition changed, the sequence likelihood has also changed
 
-		// either nothing changed or only the sequence parameters changed
-		if (sequenceChanged_)
-		{
-			sequenceTreeLikelihood_->computeTreeLikelihood();
-		}
-	}
-	
-	/* if needed, optimize the model */
-	switch(optimizationScope_)
-	{
-		case none: 
-			break;
-		case onlyCharacter: 
-			throw Exception("Error! There is no option to optimize only the character model during alternative model fitting"); 
-			break;
-		case onlySequence: 
-			optimizeSequenceModel(); 
-			break;
-		case both: 
-			throw Exception("Error! Attempt to violate the depedency between the chatacter model and sequnce model during alternative model fitting");
-		default:
-			throw Exception("Error! illegal optimizationScope setting");
-	}
-	
-	// report for debugging
-	if ((characterChanged_) & (optimizationScope_ == JointLikelihoodFunction::OptimizationScope(0)))
-	{
-		/* for debugging purpose - report character model parameters */
-		TransitionModel* characterModel = characterTreeLikelihood_->getModel();
-		ParameterList parameters = characterModel->getParameters();
-		for (size_t i = 0; i < parameters.size(); i++)
-		{
-			ApplicationTools::displayResult(parameters[i].getName(), TextTools::toString(parameters[i].getValue(), 15));
-		}
-		// get the likelihood
-		double characterLogl = characterTreeLikelihood_->getValue();
-		double sequenceLogl = sequenceTreeLikelihood_->getValue();
-		logl_ = characterLogl + sequenceLogl;
+        /* free resources - now some of these parameters were defined localy - need to use friend functions otherwise can't free it */
+        size_t numOfMappings = mappings.size();
+        for (size_t h=0; h<numOfMappings; ++h)
+        {
+            if  (mappings[h]) delete mappings[h];
+        }
+
+        if (expectedHistory) delete expectedHistory; // delete the expectedHistory, that was cloned via updatesequenceTreeLikelihood
+
+        // either nothing changed or only the sequence parameters changed
+        if (sequenceChanged_)
+        {
+            sequenceTreeLikelihood_->computeTreeLikelihood();
+        }
+    }
+
+    /* if needed, optimize the model */
+    switch(optimizationScope_)
+    {
+        case none:
+            break;
+        case onlyCharacter:
+            throw Exception("Error! There is no option to optimize only the character model during alternative model fitting");
+            break;
+        case onlySequence:
+            optimizeSequenceModel();
+            break;
+        case both:
+            throw Exception("Error! Attempt to violate the depedency between the chatacter model and sequnce model during alternative model fitting");
+        default:
+            throw Exception("Error! illegal optimizationScope setting");
+    }
+
+    // report for debugging
+    if ((characterChanged_) & (optimizationScope_ == JointLikelihoodFunction::OptimizationScope(0)))
+    {
+        /* for debugging purpose - report character model parameters */
+        TransitionModel* characterModel = characterTreeLikelihood_->getModel();
+        ParameterList parameters = characterModel->getParameters();
+        for (size_t i = 0; i < parameters.size(); i++)
+        {
+            ApplicationTools::displayResult(parameters[i].getName(), TextTools::toString(parameters[i].getValue(), 15));
+        }
+        // get the likelihood
+        double characterLogl = characterTreeLikelihood_->getValue();
+        double sequenceLogl = sequenceTreeLikelihood_->getValue();
+        logl_ = characterLogl + sequenceLogl;
         if (verbose)
         {
             ApplicationTools::displayResult("Character Log likelihood", TextTools::toString(-characterLogl, 15));
-		    ApplicationTools::displayResult("Sequence Log likelihood", TextTools::toString(-sequenceLogl, 15));
+            ApplicationTools::displayResult("Sequence Log likelihood", TextTools::toString(-sequenceLogl, 15));
             ApplicationTools::displayResult("Overall Log likelihood", TextTools::toString(-logl_, 15));
         }
-	}
+    }
 }
 
 
@@ -933,40 +933,40 @@ void JointLikelihoodFunction::setHypothesis(JointLikelihoodFunction::Hypothesis 
 
 void JointLikelihoodFunction::optimizeCharacterModel()
 {
-	unsigned int verbose = static_cast<unsigned int>(ApplicationTools::getIntParameter("optimization.verbose", bppml_->getParams(), 0));
-	if (verbose)
-		cout << "** Optimzing the character model **" << endl; 
+    unsigned int verbose = static_cast<unsigned int>(ApplicationTools::getIntParameter("optimization.verbose", bppml_->getParams(), 0));
+    if (verbose)
+        cout << "** Optimzing the character model **" << endl;
 
-	double prevLogLikelihood = -characterTreeLikelihood_->getValue();
+    double prevLogLikelihood = -characterTreeLikelihood_->getValue();
     double currLogLikelihood = -characterTreeLikelihood_->getValue();
-	// set optimization method to FullD(Newton) which showed convergence abilities
-	string initialParamsToIgnore = ApplicationTools::getStringParameter("optimization.ignore_parameters", bppml_->getParams(), "", "", true, true);
-	bppml_->getParam("optimization.ignore_parameters") = initialParamsToIgnore + ",BrLen";
-	string prevOptimization = ApplicationTools::getStringParameter("optimization", bppml_->getParams(), "FullD(derivatives=Newton)", "", true, true);
-	bppml_->getParam("optimization") = "FullD(derivatives=Newton)";
-	do
-	{
-		prevLogLikelihood = -characterTreeLikelihood_->getValue();
-		PhylogeneticsApplicationTools::optimizeParameters(characterTreeLikelihood_, characterTreeLikelihood_->getParameters(), bppml_->getParams());
-		currLogLikelihood = -characterTreeLikelihood_->getValue();
-	} while (currLogLikelihood - prevLogLikelihood > 0.01);
-	// switch back to input optimization method which will be used for the sequence model
-	bppml_->getParam("optimization") = prevOptimization;
-	
-	    // update the log likelihood of the joint model
+    // set optimization method to FullD(Newton) which showed convergence abilities
+    string initialParamsToIgnore = ApplicationTools::getStringParameter("optimization.ignore_parameters", bppml_->getParams(), "", "", true, true);
+    bppml_->getParam("optimization.ignore_parameters") = initialParamsToIgnore + ",BrLen";
+    string prevOptimization = ApplicationTools::getStringParameter("optimization", bppml_->getParams(), "FullD(derivatives=Newton)", "", true, true);
+    bppml_->getParam("optimization") = "FullD(derivatives=Newton)";
+    do
+    {
+        prevLogLikelihood = -characterTreeLikelihood_->getValue();
+        PhylogeneticsApplicationTools::optimizeParameters(characterTreeLikelihood_, characterTreeLikelihood_->getParameters(), bppml_->getParams());
+        currLogLikelihood = -characterTreeLikelihood_->getValue();
+    } while (currLogLikelihood - prevLogLikelihood > 0.01);
+    // switch back to input optimization method which will be used for the sequence model
+    bppml_->getParam("optimization") = prevOptimization;
+
+    // update the log likelihood of the joint model
     double charLogL = characterTreeLikelihood_->getValue();
     double seqLogL = sequenceTreeLikelihood_->getValue();
     double overallLogL = charLogL + seqLogL; // = log(charLikelihood * seqLikelihood)
     logl_ = overallLogL;
-	
-	if (verbose)
-	{
-		cout << "\n" << endl;
-		ParameterList parameters = characterTreeLikelihood_->getSubstitutionModelParameters();
-		for (size_t p=0; p<parameters.size(); ++p)
-			ApplicationTools::displayResult(parameters[p].getName(), TextTools::toString(parameters[p].getValue()));
-		ApplicationTools::displayResult("Character log likelihood", TextTools::toString(-characterTreeLikelihood_->getValue()));
-	}
+
+    if (verbose)
+    {
+        cout << "\n" << endl;
+        ParameterList parameters = characterTreeLikelihood_->getSubstitutionModelParameters();
+        for (size_t p=0; p<parameters.size(); ++p)
+            ApplicationTools::displayResult(parameters[p].getName(), TextTools::toString(parameters[p].getValue()));
+        ApplicationTools::displayResult("Character log likelihood", TextTools::toString(-characterTreeLikelihood_->getValue()));
+    }
 }
 
 /******************************************************************************/
@@ -994,12 +994,12 @@ void JointLikelihoodFunction::computeNullJointLikelihood()
                 ApplicationTools::displayResult(parameters[i].getName(), TextTools::toString(parameters[i].getValue()));
             }
             ApplicationTools::displayResult("Character log likelihood", TextTools::toString(-characterTreeLikelihood_->getValue(), 15));
-            ApplicationTools::displayResult("Sequence log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));        
+            ApplicationTools::displayResult("Sequence log likelihood", TextTools::toString(-sequenceTreeLikelihood_->getValue(), 15));
             break;
-        case onlyCharacter: 
+        case onlyCharacter:
             optimizeCharacterModel();
             break;
-        case onlySequence: 
+        case onlySequence:
             optimizeSequenceModel();
             break;
         case both:
@@ -1008,7 +1008,7 @@ void JointLikelihoodFunction::computeNullJointLikelihood()
             // optimize the sequence model with hypothesis_ (which is null, since computeNullJointLikelihood was called)
             optimizeSequenceModel();
             break;
-        default: 
+        default:
             throw Exception("Error! illegal optimizationScope setting");
     }
 }
