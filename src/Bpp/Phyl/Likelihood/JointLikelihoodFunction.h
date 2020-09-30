@@ -1,5 +1,5 @@
 //
-// File: JointLikelihoodFunction.cpp
+// File: JointLikelihoodFunction.h
 // Created by: Keren Halabi
 // Created on: Thu Aug 28 13:14 2018
 //

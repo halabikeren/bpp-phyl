@@ -1,11 +1,6 @@
 #include "TreeIterator.h"
 
 // imports from bpp-core
-#include <Bpp/BppBoolean.h>
-
-#include <iostream>
-#include <fstream>
-
 using namespace bpp;
 using namespace std;
 
@@ -59,11 +54,11 @@ const Node* PostOrderTreeIterator::getLeftMostPredecessor(const Node* startNode)
         return startNode;
     }
     const Node* node = startNode->getSon(nextPos);
-	while (node->getNumberOfSons() > 0)
+    while (node->getNumberOfSons() > 0)
     {
-		node = node->getSon(0);
-	}
-	return node;
+        node = node->getSon(0);
+    }
+    return node;
 }
 
 /******************************************************************************/
@@ -85,7 +80,7 @@ const Node* PostOrderTreeIterator::next()
     {
         currNode_ = currNode_->getFather();
     }
-    // else -> visit the leftmost predecessor next brother on the list
+        // else -> visit the leftmost predecessor next brother on the list
     else
     {
         size_t nextSiblingPos = lastVisitedBrotherPos + 1;
@@ -115,12 +110,9 @@ const Node* PostOrderTreeIterator::next()
 const Node* PreOrderTreeIterator::next()
 {   // order: (parent, left, right)
 
-    
+
     vector<int> leafIds = tree_.getLeavesId();
     bool hasVisitedSons = nodeToSonVisited_[currNode_->getId()];
-    size_t lastVisitedSonPos;
-    if (hasVisitedSons)
-        lastVisitedSonPos = nodeToLastVisitedSonIndex_[currNode_->getId()];
     size_t numOfSons = currNode_->getNumberOfSons();
 
     // stop condition: the node is the rightmost leaf of the tree
@@ -134,24 +126,24 @@ const Node* PreOrderTreeIterator::next()
     {
         currNode_ = currNode_->getSon(0); // this somehow modifies the value of nodeToSonVisited_[currNode_->getFatherId()] to true... how?
     }
-    // as long as there are still sons to visit -> visit the leftmost unvisited son
+        // as long as there are still sons to visit -> visit the leftmost unvisited son
     else if (hasVisitedSons && nodeToLastVisitedSonIndex_[currNode_->getId()] < numOfSons-1)
     {
         // if this point is reached, the current node already has visited sons, or it has no sons at all and we are done
         currNode_ = currNode_->getSon(nodeToLastVisitedSonIndex_[currNode_->getId()]+1);
-    // else -> traverse to the leftmost brother which is right to currNode_ (also occurs when currNode has no sons
+        // else -> traverse to the leftmost brother which is right to currNode_ (also occurs when currNode has no sons
     }
     else
     {
-       currNode_ = currNode_->getFather();
-       lastVisitedSonPos = nodeToLastVisitedSonIndex_[currNode_->getId()]; // the father of the original currNode_ must have at least one visited child which is the original currNode_
-       numOfSons = currNode_->getNumberOfSons();
-       while (lastVisitedSonPos == numOfSons-1)
-       {
-             currNode_ = currNode_->getFather(); // the father node must have visited sons as the currNode is a visited son of his
+        currNode_ = currNode_->getFather();
+        size_t lastVisitedSonPos = nodeToLastVisitedSonIndex_[currNode_->getId()]; // the father of the original currNode_ must have at least one visited child which is the original currNode_
+        numOfSons = currNode_->getNumberOfSons();
+        while (lastVisitedSonPos == numOfSons-1)
+        {
+            currNode_ = currNode_->getFather(); // the father node must have visited sons as the currNode is a visited son of his
             lastVisitedSonPos = nodeToLastVisitedSonIndex_[currNode_->getId()];
             numOfSons = currNode_->getNumberOfSons();
-       }
+        }
         currNode_ = currNode_->getSon(lastVisitedSonPos+1);    // need to remove +1??
     }
     // update the returned node to be visited and its father's last visited son, if needed
@@ -179,33 +171,33 @@ const Node* InOrderTreeIterator::doStep(const Node* node)
         lastVisitedSon = nodeToLastVisitedSonIndex_[node->getId()];
     size_t numOfSons = node->getNumberOfSons();
     bool is_visited =  nodeToVisited_[node->getId()];
-   
+
     // if the node has unvisited left sons - go to the leftmost unvisited son
     if (!nodeToSonVisited_[node->getId()] && numOfSons > 0)
     {
         return node->getSon(0);
- 
+
     }
     else if (nodeToSonVisited_[node->getId()] && lastVisitedSon < static_cast<size_t>(floor(numOfSons/2)-1))
     {
         return node->getSon(lastVisitedSon+1);
 
     }
-    
-    // if the node last visited its last left son or is a not yet visited leaf / parent of a single node -> go to it
+
+        // if the node last visited its last left son or is a not yet visited leaf / parent of a single node -> go to it
     else if (numOfSons > 1 && lastVisitedSon == static_cast<size_t>(floor(numOfSons/2)-1) && !is_visited)
     {
         return node;
     }
 
-    // if the node has unvisited right sons -> go to the leftmost unviited right son
+        // if the node has unvisited right sons -> go to the leftmost unvisited right son
     else if (nodeToSonVisited_[node->getId()] && lastVisitedSon < numOfSons-1)
     {
         return node->getSon(lastVisitedSon+1);
     }
 
-    // else - the entire subtree of the node has been scanned - move to its father
-    else 
+        // else - the entire subtree of the node has been scanned - move to its father
+    else
     {
         return node->getFather();
     }
@@ -227,7 +219,7 @@ const Node* InOrderTreeIterator::next()
 
     // while curNode still has unvisited left sons -> do another step
     while (nodeToVisited_[currNode_->getId()]
-     || (!nodeToSonVisited_[currNode_->getId()] && !currNode_->isLeaf()) || (nodeToSonVisited_[currNode_->getId()] && nodeToLastVisitedSonIndex_[currNode_->getId()] < static_cast<size_t>(floor(currNode_->getNumberOfSons()/2)-1) && !currNode_->isLeaf()))
+           || (!nodeToSonVisited_[currNode_->getId()] && !currNode_->isLeaf()) || (nodeToSonVisited_[currNode_->getId()] && nodeToLastVisitedSonIndex_[currNode_->getId()] < static_cast<size_t>(floor(currNode_->getNumberOfSons()/2)-1) && !currNode_->isLeaf()))
     {
         currNode_ = doStep(currNode_);
     }
