@@ -132,12 +132,9 @@ public:
   
 public:
   // the inherited functions don't do the work - need to override them with the correct computation
-  double Pij_t    (size_t i, size_t j, double d) const;
-  double dPij_dt  (size_t i, size_t j, double d) const;
-  double d2Pij_dt2(size_t i, size_t j, double d) const;
-  const Matrix<double>& getPij_t    (double d) const;
-  const Matrix<double>& getdPij_dt  (double d) const;
-  const Matrix<double>& getd2Pij_dt2(double d) const;
+  // const Matrix<double>& getPij_t    (double t) const;
+  // const Matrix<double>& getdPij_dt  (double t) const;
+  // const Matrix<double>& getd2Pij_dt2(double t) const;
 
   std::string getName() const { return "TwoParameterBinary"; }
   
