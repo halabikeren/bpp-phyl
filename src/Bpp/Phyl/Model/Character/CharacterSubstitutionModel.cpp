@@ -1,7 +1,7 @@
 //
-// File: mkModel.cpp
+// File: CharacterSubstitutionModel.cpp
 // Created by: Keren Halabi
-// Created on: 2021
+// Created on: April 2021
 //
 
 /*
@@ -37,7 +37,7 @@
    knowledge of the CeCILL license and that you accept its terms.
  */
 
-#include "mkModel.h"
+#include "CharacterSubstitutionModel.h"
 
 // From the STL:
 #include <cmath>
@@ -58,61 +58,36 @@ using namespace std;
 
 /******************************************************************************/
 
-mkModel::mkModel(const IntegerAlphabet* alpha):
-  AbstractParameterAliasable("mk."),
-  AbstractReversibleSubstitutionModel(alpha, shared_ptr<const StateMap>(new CanonicalStateMap(alpha, false)), "mk."),
-  rates_(size_, size_), // the user can select to constrain the rates to be similar across all pairs of states to obtain the actual mk model
+CharacterSubstitutionModel::CharacterSubstitutionModel(const std::string& prefix, const IntegerAlphabet* alpha, const vector<double>& fixedFreqs):
+  AbstractParameterAliasable(prefix + "."),
+  AbstractSubstitutionModel(alpha, shared_ptr<const StateMap>(new CanonicalStateMap(alpha, false)), prefix+"."),
   freqSet_(0)
 {
-  freqSet_.reset(new FixedIntegerFrequencySet(alpha, freq_));
-  for (size_t i=0; i<rates_.getNumberOfRows(); ++i)
-  {
-    for (size_t j=0; j<rates_.getNumberOfRows(); ++j)
-    {
-      rates_(i, j) = 1.;
-      addParameter_(new Parameter("mk.rate_" + TextTools::toString(i) + "_" + TextTools::toString(j), rates_(i, j), make_shared<IntervalConstraint>(NumConstants::MILLI(), 100, false, false)));
-    }
-  }
+  freqSet_.reset(new FixedIntegerFrequencySet(alpha, fixedFreqs));
   updateMatrices();
 }
 
 /******************************************************************************/
 
-mkModel::mkModel(const IntegerAlphabet* alpha, shared_ptr<IntegerFrequencySet> freqSet, bool initFreqs) :
-  AbstractParameterAliasable("mk+F."),
-  AbstractReversibleSubstitutionModel(alpha, shared_ptr<const StateMap>(new CanonicalStateMap(alpha, false)), "mk+F."),
-  rates_(size_, size_),
+CharacterSubstitutionModel::CharacterSubstitutionModel(const std::string& prefix, const IntegerAlphabet* alpha, shared_ptr<IntegerFrequencySet> freqSet, bool initFreqs) :
+  AbstractParameterAliasable(prefix+"+F."),
+  AbstractSubstitutionModel(alpha, shared_ptr<const StateMap>(new CanonicalStateMap(alpha, false)), prefix+"+F."),
   freqSet_(freqSet)
 {
-  freqSet_->setNamespace("mk+F."+freqSet_->getNamespace());
+  freqSet_->setNamespace(prefix+"+F."+freqSet_->getNamespace());
   if (initFreqs) freqSet_->setFrequencies(freq_);
   else freq_ = freqSet_->getFrequencies();
   addParameters_(freqSet_->getParameters());
-  for (size_t i=0; i<rates_.getNumberOfRows(); ++i)
-  {
-    for (size_t j=0; j<rates_.getNumberOfRows(); ++j)
-    {
-      rates_(i, j) = 1.;
-      addParameter_(new Parameter("mk+F.rate_" + TextTools::toString(i) + "_" + TextTools::toString(j), rates_(i, j), make_shared<IntervalConstraint>(NumConstants::MILLI(), 100, false, false)));
-    }
-  }
   updateMatrices();  
 }
 
 /******************************************************************************/
 
 
-void mkModel::updateMatrices()
+void CharacterSubstitutionModel::updateMatrices()
 {
 
   // update parameters
-  for (size_t i=0; i<rates_.getNumberOfRows(); ++i)
-  {
-    for (size_t j=0; j<rates_.getNumberOfColumns(); ++j)
-    {
-      rates_(i, j) = getParameterValue("rate_" + TextTools::toString(i) + "_" + TextTools::toString(j));
-    }
-  }
   freq_ = freqSet_->getFrequencies();
 
   // set the exachangability matrix 
@@ -122,38 +97,33 @@ void mkModel::updateMatrices()
     {
       if (i == j)
       {
-        exchangeability_(i,j) = -1 * rates_(i, j);
+        exchangeability_(i,j) = -1 * rate_;
       }
       else
       {
-        exchangeability_(i,j) = rates_(i, j);
+        exchangeability_(i,j) = rate_;
       }
     }
   }
 
+  MatrixTools::hadamardMult(exchangeability_, freq_, generator_, false); // Diagonal elements of the exchangeability matrix will be ignored.
+  setDiagonal();
   isScalable_ = false;
-  AbstractReversibleSubstitutionModel::updateMatrices();
+  AbstractSubstitutionModel::updateMatrices();
 }
 
 /******************************************************************************/
 
-void mkModel::fireParameterChanged(const ParameterList& parameters)
+void CharacterSubstitutionModel::fireParameterChanged(const ParameterList& parameters)
 {
-  for (size_t i=0; i<rates_.getNumberOfRows(); ++i)
-  {
-    for (size_t j=0; j<rates_.getNumberOfColumns(); ++j)
-    {
-      rates_(i, j)= parameters.getParameterValue(getName() + ".rate+" + TextTools::toString(i) + "_" +  TextTools::toString(j));
-    }
-  }
   freqSet_->matchParametersValues(parameters);
   freq_ = freqSet_->getFrequencies();
-  AbstractReversibleSubstitutionModel::fireParameterChanged(parameters);
+  AbstractSubstitutionModel::fireParameterChanged(parameters);
 }
 
 /******************************************************************************/
 
-void mkModel::setFrequencySet(const IntegerFrequencySet& freqSet)
+void CharacterSubstitutionModel::setFrequencySet(const IntegerFrequencySet& freqSet)
 {
   freqSet_ = shared_ptr<IntegerFrequencySet>(dynamic_cast<IntegerFrequencySet*>(freqSet.clone()));
   resetParameters_();
@@ -162,7 +132,7 @@ void mkModel::setFrequencySet(const IntegerFrequencySet& freqSet)
 
 /******************************************************************************/
 
-void mkModel::setFreqFromData(const SequencedValuesContainer& data, double pseudoCount)
+void CharacterSubstitutionModel::setFreqFromData(const SequencedValuesContainer& data, double pseudoCount)
 {
   map<int, double> counts;
   SequenceContainerTools::getFrequencies(data, counts, pseudoCount);
@@ -176,8 +146,8 @@ void mkModel::setFreqFromData(const SequencedValuesContainer& data, double pseud
 
 /******************************************************************************/
 
-void mkModel::setRateBounds(int srcState, int destState, double lb, double ub)
+void CharacterSubstitutionModel::setParamBounds(const std::string& name, double lb, double ub)
 {
-  shared_ptr<IntervalConstraint> bounds(new IntervalConstraint(lb, ub, true, true)); 
-  getParameter_("rate_" + TextTools::toString(srcState) + "_" + TextTools::toString(destState)).setConstraint(bounds);
+  std::shared_ptr<IntervalConstraint> bounds(new IntervalConstraint(lb, ub, true, true)); 
+  getParameter_(name).setConstraint(bounds);
 }

@@ -1,7 +1,7 @@
 //
-// File: mkModel.h
+// File: CharacterSubstitutionModel.h
 // Created by: Keren Halabi
-// Created on: 2021
+// Created on: April 2021
 //
 
 /*
@@ -32,84 +32,84 @@
    knowledge of the CeCILL license and that you accept its terms.
  */
 
-#ifndef _MKMODEL_H_
-#define _MKMODEL_H_
+#ifndef _CHARACTERSUBSTITUTIONMODEL_H_
+#define _CHARACTERSUBSTITUTIONMODEL_H_
 
-#include "AbstractSubstitutionModel.h"
+#include "../AbstractSubstitutionModel.h"
+#include "../FrequencySet/IntegerFrequencySet.h"
+
 #include <Bpp/Seq/Alphabet/IntegerAlphabet.h>
-#include "./FrequencySet/IntegerFrequencySet.h"
 
 using namespace std;
 
 namespace bpp
 {
 
-class mkModel :
-  public AbstractReversibleSubstitutionModel
+class CharacterSubstitutionModel :
+  public AbstractSubstitutionModel
 {
-private:
-  mutable RowMatrix<double> rates_;
-  shared_ptr<IntegerFrequencySet> freqSet_;
+protected:
+  shared_ptr<IntegerFrequencySet> freqSet_; 
 
 public:
   /**
-   * @brief Build a simple mkModel model, with original equilibrium frequencies.
+   * @brief Build a simple CharacterSubstitutionModel model, with original equilibrium frequencies.
    *
-   * @param alpha An Integer alphabet.
+   * @param prefix A stirng of the model name
+   * @param alpha An Integer alphabet
+   * @param fixedFreqs Initial and fixed frequencies
    */
-  mkModel(const IntegerAlphabet* alpha);
+  CharacterSubstitutionModel(const std::string& prefix, const IntegerAlphabet* alpha, const vector<double>& fixedFreqs);
 
   /**
-    * @brief Build a mkModel with special equilibrium frequencies.
+    * @brief Build a CharacterSubstitutionModel with special equilibrium frequencies.
     *
+    * @param prefix A stirng of the model name
     * @param alpha An Integer alphabet.
     * @param freqSet A pointer toward a integer frequencies set, which will be owned by this instance.
     * @param initFreqs Tell if the frequency set should be initialized with the original mk values
     * (equal frequencies across all states). Otherwise, the values of the set will be used.
    */
-  mkModel(const IntegerAlphabet* alpha, shared_ptr<IntegerFrequencySet> freqSet, bool initFreqs = false);
+  CharacterSubstitutionModel(const std::string& prefix, const IntegerAlphabet* alpha, shared_ptr<IntegerFrequencySet> freqSet, bool initFreqs = false);
   
   /** 
    * copy constructor
    */
-  mkModel(const mkModel& model) :
+  CharacterSubstitutionModel(const CharacterSubstitutionModel& model) :
     AbstractParameterAliasable(model),
-    AbstractReversibleSubstitutionModel(model),
-    rates_(model.rates_),
+    AbstractSubstitutionModel(model),
     freqSet_(dynamic_cast<IntegerFrequencySet *>(model.freqSet_->clone()))
   {}
 
   /** 
    * copy operator
    */
-  mkModel& operator=(const mkModel& model)
+  CharacterSubstitutionModel& operator=(const CharacterSubstitutionModel& model)
   {
     AbstractParameterAliasable::operator=(model);
-    AbstractReversibleSubstitutionModel::operator=(model);
+    AbstractSubstitutionModel::operator=(model);
     freqSet_.reset(dynamic_cast<IntegerFrequencySet *>(model.freqSet_->clone()));
-    rates_ = model.rates_;
     return *this;
   }
 
   /**
    * destructor
    */
-  virtual ~mkModel() {}
+  virtual ~CharacterSubstitutionModel() {}
 
   /**
    * clone function
    */
-  mkModel* clone() const { return new mkModel(*this); }
+  CharacterSubstitutionModel* clone() const { return new CharacterSubstitutionModel(*this); }
 
-  
 public:
 
-  string getName() const 
+  string getName() const // TO DO: make sure namespace doesn't already include the +F
   { 
-    if (freqSet_->getNamespace().find("mk+F.")!=std::string::npos)
-      return "mk+F"; 
+    if (freqSet_->getNamespace().find("+F.")!=std::string::npos)
+      return getNamespace()+"+F"; 
     else 
-      return "mk"; 
+      return getNamespace(); 
   }
   
   size_t getNumberOfStates() const { return size_; }
@@ -123,18 +123,17 @@ public:
   void setFreqFromData(const SequencedValuesContainer& data, double pseudoCount = 0);
 
   /**
-   * @brief enables customization of rate search space during optimization
-   * 
-   * @param srcState the source state
-   * @param destState the destination state
-   * @param lb a lower bound value
-   * @param ub an upper bound value
+    * @brief Enables setting of search space of a parameter
+    *
+    * @param name Parameter name
+    * @param lb Lower bound
+    * @param ub Upper bound
    */
-  void setRateBounds(int srcState, int destState, double lb, double ub);
+  void setParamBounds(const std::string& name, double lb, double ub);
 
 protected:
   void updateMatrices();
 };
 } // end of namespace bpp.
 
-#endif  // _MKMODEL_H_
+#endif  // _CHARACTERSUBSTITUTIONMODEL_H_
