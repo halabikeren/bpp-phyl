@@ -49,25 +49,31 @@ using namespace std;
 
 /******************************************************************************/
 
-RatePerExitModel::RatePerExitModel(const IntegerAlphabet* alpha, const vector<double>& fixedFreqs, const vector<double>& exitRates):
-  AbstractParameterAliasable("RatePerExit."), // ask Tiana why this works
-  CharacterSubstitutionModel("RatePerExit", alpha, fixedFreqs),
-  exitRates_(exitRates)
+RatePerExitModel::RatePerExitModel(const IntegerAlphabet* alpha):
+  AbstractParameterAliasable("RatePerExit."),
+  CharacterSubstitutionModel("RatePerExit", alpha),
+  exitRates_(size_)
 {
   for (size_t i=0; i<exitRates_.size(); ++i)
+  {
+    exitRates_[i] = 1.;
     addParameter_(new Parameter(getNamespace() + "exit_rate_"+TextTools::toString(i), exitRates_[i], std::make_shared<IntervalConstraint>(NumConstants::MILLI(), 100, false, false)));
+  }
   updateMatrices(); 
 }
 
 /******************************************************************************/
 
-RatePerExitModel::RatePerExitModel(const IntegerAlphabet* alpha, std::shared_ptr<IntegerFrequencySet> freqSet, const vector<double>& exitRates, bool initFreqs):
+RatePerExitModel::RatePerExitModel(const IntegerAlphabet* alpha, std::shared_ptr<IntegerFrequencySet> freqSet, bool initFreqs):
   AbstractParameterAliasable("RatePerExit+F."), // ask Tiana why this works
   CharacterSubstitutionModel("RatePerExit", alpha, freqSet, initFreqs),
-  exitRates_(exitRates)
+  exitRates_(size_)
 {
   for (size_t i=0; i<exitRates_.size(); ++i)
+  {
+    exitRates_[i] = 1.;
     addParameter_(new Parameter(getNamespace() + "exit_rate_"+TextTools::toString(i), exitRates_[i], std::make_shared<IntervalConstraint>(NumConstants::MILLI(), 100, false, false)));
+  }
   updateMatrices(); 
 }
 
@@ -81,31 +87,12 @@ void RatePerExitModel::updateMatrices()
     exitRates_[i] = getParameterValue("exit_rate_" + TextTools::toString(i)); 
   freq_ = freqSet_->getFrequencies();
 
-  vector<double> entryRates(size_);
-  for (size_t i=0; i<size_; ++i)
-  {
-      double entryRate = 0;
-      for (size_t j=0; j<size_; ++j)
-      {
-          if (j != i)
-            entryRate += exitRates_[j];
-      }
-      entryRates[i] = entryRate;
-  }
-
   // set the exachangability matrix 
   for (size_t i=0; i<size_; ++i)
   {
     for (size_t j=0; j<size_; ++j)
     {
-      if (i == j)
-      {
-        exchangeability_(i,j) = - exitRates_[i];
-      }
-      else
-      {
-        exchangeability_(i,j) = entryRates[j];
-      }
+      exchangeability_(i,j) = ((i == j) ?  - exitRates_[i]: (exitRates_[i]/static_cast<double>(size_-1)));
     }
   }
 
@@ -113,4 +100,17 @@ void RatePerExitModel::updateMatrices()
   setDiagonal();
   isScalable_ = false;
   AbstractSubstitutionModel::updateMatrices();
+}
+
+
+/******************************************************************************/
+
+void RatePerExitModel::fireParameterChanged(const ParameterList& parameters)
+{
+  for (size_t i=0; i<exitRates_.size(); ++i)
+  {
+    if (parameters.hasParameter(getNamespace() + "exit_rate_" + TextTools::toString(i)))
+      exitRates_[i] = parameters.getParameterValue(getNamespace() + "exit_rate_" + TextTools::toString(i));
+  }
+  CharacterSubstitutionModel::fireParameterChanged(parameters);
 }

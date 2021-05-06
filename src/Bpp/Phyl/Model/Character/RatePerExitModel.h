@@ -68,21 +68,18 @@ namespace bpp
      * @brief Build a simple RatePerExitModel model, with original equilibrium frequencies.
      *
      * @param alpha A character alphabet
-     * @param fixedFreqs vector of fixed frequencies
-     * @param exitRates substitution exit rates values
      */
-    RatePerExitModel(const IntegerAlphabet* alpha, const vector<double>& fixedFreqs, const vector<double>& exitRates);
+    RatePerExitModel(const IntegerAlphabet* alpha);
 
     /**
      * @brief Build a RatePerExitModel model with special equilibrium frequencies.
      *
      * @param alpha A character alphabet.
      * @param freqSet A pointer toward a character frequencies set, which will be owned by this instance.
-     * @param exitRates substitution exit rates values
      * @param initFreqs Tell if the frequency set should be initialized with the original RatePerExitModel values.
      * Otherwise, the values of the set will be used.
      */
-    RatePerExitModel(const IntegerAlphabet* alpha, std::shared_ptr<IntegerFrequencySet> freqSet, const vector<double>& exitRates, bool initFreqs=false);
+    RatePerExitModel(const IntegerAlphabet* alpha, std::shared_ptr<IntegerFrequencySet> freqSet, bool initFreqs=false);
 
     /** 
      * copy constructor
@@ -116,12 +113,7 @@ namespace bpp
 
   public:
   
-    void fireParameterChanged(const ParameterList& parameters)
-    {
-      for (size_t i=0; i<entryRates_.size(); ++i)
-        exitRates_[i] = parameters.getParameterValue("exit_rate_" + TextTools::toString(i));
-      CharacterSubstitutionModel::fireParameterChanged(parameters);
-    }
+    void fireParameterChanged(const ParameterList& parameters);
 
   protected:
     void updateMatrices();

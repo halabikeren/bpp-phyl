@@ -1,5 +1,5 @@
 //
-// File: SingleRateModel.h
+// File: RatePerPairSymModel.h
 // Created by: Keren Halabi
 // Created on: April 2021
 //
@@ -37,8 +37,8 @@
   knowledge of the CeCILL license and that you accept its terms.
 */
 
-#ifndef _SINGLERATEMODEL_H_
-#define _SINGLERATEMODEL_H_
+#ifndef _RATEPERPAIRSYMMODEL_H_
+#define _RATEPERPAIRSYMMODEL_H_
 
 #include "CharacterSubstitutionModel.h"
 #include "../AbstractSubstitutionModel.h"
@@ -47,81 +47,74 @@
 // From SeqLib:
 #include <Bpp/Seq/Alphabet/IntegerAlphabet.h>
 
+// From CoreLib:
+#include <Bpp/Text/TextTools.h>
+
 namespace bpp
 {
 
   /**
-   * @brief The mk substitution model for characters.
-   *
-   * The original frequencies can be used, or alternatively a
-   * parametrized version, corresponding to the so-called SingleRateModel+F
-   * model. Eigen values and vectors are obtained numerically.
-   * 
-   * Reference:
-   * Pagel, M. 1994. Detecting correlated evolution on phylogenies: 
-   * A general method for the comparative analysis of discrete characters. 
-   * Proc. R. Soc. Lond. B Biol. Sci. 255:37–45. The Royal Society.
-   *
+   * @brief A substitution model for characters, allowing the rate of substituiotn between each pair of states to each state to vary, 
+   * leading to number of rate parameters which is equal to the number of states.
    */
-  class SingleRateModel :
+  class RatePerPairSymModel :
     public  CharacterSubstitutionModel
   {
   private:
-    double globalRate_;
+    mutable RowMatrix<double> substitutionRates_; // substitutionRates_(i,j) corresponds to the rate of substitution between states i and j and is equal to substitutionRates_(j,i)
 
   public:
     /**
-     * @brief Build a simple SingleRateModel model, with original equilibrium frequencies.
+     * @brief Build a simple RatePerPairSymModel model, with original equilibrium frequencies.
      *
      * @param alpha A character alphabet
      */
-    SingleRateModel(const IntegerAlphabet* alpha);
+    RatePerPairSymModel(const IntegerAlphabet* alpha);
 
     /**
-     * @brief Build a SingleRateModel model with special equilibrium frequencies.
+     * @brief Build a RatePerPairSymModel model with special equilibrium frequencies.
      *
      * @param alpha A character alphabet.
      * @param freqSet A pointer toward a character frequencies set, which will be owned by this instance.
-     * @param initFreqs Tell if the frequency set should be initialized with the original SingleRateModel values.
+     * @param initFreqs Tell if the frequency set should be initialized with the original RatePerPairSymModel values.
      * Otherwise, the values of the set will be used.
-
      */
-    SingleRateModel(const IntegerAlphabet* alpha, std::shared_ptr<IntegerFrequencySet> freqSet, bool initFreqs=false);
+    RatePerPairSymModel(const IntegerAlphabet* alpha, std::shared_ptr<IntegerFrequencySet> freqSet, bool initFreqs=false);
 
     /** 
      * copy constructor
      */
-    SingleRateModel(const SingleRateModel& model) :
+    RatePerPairSymModel(const RatePerPairSymModel& model) :
       AbstractParameterAliasable(model),
       CharacterSubstitutionModel(model),
-      globalRate_(model.globalRate_)
+      substitutionRates_(model.substitutionRates_)
     {}
 
     /** 
      * copy operator
      */
-    SingleRateModel& operator=(const SingleRateModel& model)
+    RatePerPairSymModel& operator=(const RatePerPairSymModel& model)
     {
       AbstractParameterAliasable::operator=(model);
       CharacterSubstitutionModel::operator=(model);
-      globalRate_ = model.globalRate_;
+      substitutionRates_ = model.substitutionRates_;
       return *this;
     }
 
     /**
      * destructor
      */
-    virtual ~SingleRateModel() {}
+    virtual ~RatePerPairSymModel() {}
 
     /**
      * clone function
      */
-    SingleRateModel* clone() const { return new SingleRateModel(*this); }
+    RatePerPairSymModel* clone() const { return new RatePerPairSymModel(*this); }
 
   public:
   
     void fireParameterChanged(const ParameterList& parameters);
-    
+
   protected:
     void updateMatrices();
 
@@ -129,5 +122,5 @@ namespace bpp
 
 } //end of namespace bpp.
 
-#endif	//_SINGLERATEMODEL_H_
+#endif	//_RATEPERPAIRSYMMODEL_H_
 

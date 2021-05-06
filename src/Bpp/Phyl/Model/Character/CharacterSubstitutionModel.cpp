@@ -58,11 +58,12 @@ using namespace std;
 
 /******************************************************************************/
 
-CharacterSubstitutionModel::CharacterSubstitutionModel(const std::string& prefix, const IntegerAlphabet* alpha, const vector<double>& fixedFreqs):
+CharacterSubstitutionModel::CharacterSubstitutionModel(const std::string& prefix, const IntegerAlphabet* alpha):
   AbstractParameterAliasable(prefix + "."),
   AbstractSubstitutionModel(alpha, shared_ptr<const StateMap>(new CanonicalStateMap(alpha, false)), prefix+"."),
   freqSet_(0)
 {
+  vector<double> fixedFreqs(size_, 1/size_);
   freqSet_.reset(new FixedIntegerFrequencySet(alpha, fixedFreqs));
   updateMatrices();
 }

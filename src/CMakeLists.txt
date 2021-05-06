@@ -139,8 +139,12 @@ set (CPP_FILES
   Bpp/Phyl/Model/AbstractSubstitutionModel.cpp
   Bpp/Phyl/Model/AbstractWordSubstitutionModel.cpp
   Bpp/Phyl/Model/BinarySubstitutionModel.cpp
-  Bpp/Phyl/Model/TwoParameterBinarySubstitutionModel.cpp
-  Bpp/Phyl/Model/mkModel.cpp
+  Bpp/Phyl/Model/Character/CharacterSubstitutionModel.cpp
+  Bpp/Phyl/Model/Character/SingleRateModel.cpp
+  Bpp/Phyl/Model/Character/RatePerEntryModel.cpp
+  Bpp/Phyl/Model/Character/RatePerExitModel.cpp
+  Bpp/Phyl/Model/Character/RatePerPairSymModel.cpp
+  Bpp/Phyl/Model/Character/RatePerPairModel.cpp
   Bpp/Phyl/Model/Codon/AbstractCodonAARateSubstitutionModel.cpp
   Bpp/Phyl/Model/Codon/AbstractCodonAAFitnessSubstitutionModel.cpp
   Bpp/Phyl/Model/Codon/AbstractCodonBGCSubstitutionModel.cpp

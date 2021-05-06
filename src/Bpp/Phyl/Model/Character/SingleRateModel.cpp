@@ -49,23 +49,23 @@ using namespace std;
 
 /******************************************************************************/
 
-SingleRateModel::SingleRateModel(const IntegerAlphabet* alpha, const vector<double>& fixedFreqs, double rate):
+SingleRateModel::SingleRateModel(const IntegerAlphabet* alpha):
   AbstractParameterAliasable("SingleRate."), // ask Tiana why this works
-  CharacterSubstitutionModel("SingleRate", alpha, fixedFreqs),
-  globalRate_(rate)
+  CharacterSubstitutionModel("SingleRate", alpha),
+  globalRate_(1.)
 {
-  addParameter_(new Parameter(getNamespace() + "rate", globalRate_, std::make_shared<IntervalConstraint>(NumConstants::MILLI(), 100, false, false)));
+  addParameter_(new Parameter(getNamespace() + "global_rate", globalRate_, std::make_shared<IntervalConstraint>(NumConstants::MILLI(), 100, false, false)));
   updateMatrices(); 
 }
 
 /******************************************************************************/
 
-SingleRateModel::SingleRateModel(const IntegerAlphabet* alpha, std::shared_ptr<IntegerFrequencySet> freqSet, double rate, bool initFreqs):
+SingleRateModel::SingleRateModel(const IntegerAlphabet* alpha, std::shared_ptr<IntegerFrequencySet> freqSet, bool initFreqs):
   AbstractParameterAliasable("SingleRate+F."), // ask Tiana why this works
   CharacterSubstitutionModel("SingleRate", alpha, freqSet, initFreqs),
-  globalRate_(rate)
+  globalRate_(1.)
 {
-  addParameter_(new Parameter(getNamespace() + "rate", globalRate_, std::make_shared<IntervalConstraint>(NumConstants::MILLI(), 100, false, false)));
+  addParameter_(new Parameter(getNamespace() + "global_rate", globalRate_, std::make_shared<IntervalConstraint>(NumConstants::MILLI(), 100, false, false)));
   updateMatrices(); 
 }
 
@@ -75,7 +75,7 @@ void SingleRateModel::updateMatrices()
 {
 
   // update parameters
-  globalRate_ = getParameterValue("rate");
+  globalRate_ = getParameterValue("global_rate");
   freq_ = freqSet_->getFrequencies();
 
   // set the exachangability matrix 
@@ -83,14 +83,7 @@ void SingleRateModel::updateMatrices()
   {
     for (size_t j=0; j<size_; ++j)
     {
-      if (i == j)
-      {
-        exchangeability_(i,j) = - globalRate_;
-      }
-      else
-      {
-        exchangeability_(i,j) = globalRate_;
-      }
+      exchangeability_(i,j) = ((i == j) ?  - globalRate_: globalRate_);
     }
   }
 
@@ -98,4 +91,14 @@ void SingleRateModel::updateMatrices()
   setDiagonal();
   isScalable_ = false;
   AbstractSubstitutionModel::updateMatrices();
+}
+
+
+/******************************************************************************/
+
+void SingleRateModel::fireParameterChanged(const ParameterList& parameters)
+{
+  if (parameters.hasParameter(getNamespace()+"global_rate"))
+    globalRate_ = parameters.getParameterValue(getNamespace()+"global_rate");
+  CharacterSubstitutionModel::fireParameterChanged(parameters);
 }

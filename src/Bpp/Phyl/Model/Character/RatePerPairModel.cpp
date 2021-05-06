@@ -1,8 +1,7 @@
 //
-// File: RatePerEntryModel.cpp
+// File: RatePerPairModel.cpp
 // Created by: Keren Halabi
 // Created on: 2021
-//
 
 /*
 Copyright or © or Copr. Bio++ Development Team, (November 16, 2004)
@@ -38,7 +37,7 @@ knowledge of the CeCILL license and that you accept its terms.
 */
 
 
-#include "RatePerEntryModel.h"
+#include "RatePerPairModel.h"
 #include "../AbstractSubstitutionModel.h"
 
 #include <Bpp/Seq/Container/SequenceContainerTools.h>
@@ -49,42 +48,56 @@ using namespace std;
 
 /******************************************************************************/
 
-RatePerEntryModel::RatePerEntryModel(const IntegerAlphabet* alpha):
-  AbstractParameterAliasable("RatePerEntry."),
-  CharacterSubstitutionModel("RatePerEntry", alpha),
-  entryRates_(size_)
+RatePerPairModel::RatePerPairModel(const IntegerAlphabet* alpha):
+  AbstractParameterAliasable("RatePerPairModel."),
+  CharacterSubstitutionModel("RatePerPairModel", alpha),
+  substitutionRates_(size_, size_)
 {
-  for (size_t i=0; i<entryRates_.size(); ++i)
+
+  for (size_t i=0; i<substitutionRates_.getNumberOfRows(); ++i)
   {
-    entryRates_[i] = 1.;
-    addParameter_(new Parameter(getNamespace() + "entry_rate_"+TextTools::toString(i), entryRates_[i], std::make_shared<IntervalConstraint>(NumConstants::MILLI(), 100, false, false)));
+    for (size_t j=i+1; j<substitutionRates_.getNumberOfColumns(); ++j)
+    {
+      substitutionRates_(i,j) = substitutionRates_(j,i) = 1.;
+      addParameter_(new Parameter(getNamespace() + "rate_"+TextTools::toString(i)+"_"+TextTools::toString(j), substitutionRates_(i,j), std::make_shared<IntervalConstraint>(NumConstants::MILLI(), 100, false, false)));
+    }
   }
   updateMatrices(); 
 }
 
 /******************************************************************************/
 
-RatePerEntryModel::RatePerEntryModel(const IntegerAlphabet* alpha, std::shared_ptr<IntegerFrequencySet> freqSet, bool initFreqs):
-  AbstractParameterAliasable("RatePerEntry+F."), // ask Tiana why this works
-  CharacterSubstitutionModel("RatePerEntry", alpha, freqSet, initFreqs),
-  entryRates_(size_)
+RatePerPairModel::RatePerPairModel(const IntegerAlphabet* alpha, std::shared_ptr<IntegerFrequencySet> freqSet, bool initFreqs):
+  AbstractParameterAliasable("RatePerPairModel+F."), // ask Tiana why this works
+  CharacterSubstitutionModel("RatePerPairModel", alpha, freqSet, initFreqs),
+  substitutionRates_(size_, size_)
 {
-  for (size_t i=0; i<entryRates_.size(); ++i)
+  for (size_t i=0; i<substitutionRates_.getNumberOfRows(); ++i)
   {
-    entryRates_[i] = 1.;
-    addParameter_(new Parameter(getNamespace() + "entry_rate_"+TextTools::toString(i), entryRates_[i], std::make_shared<IntervalConstraint>(NumConstants::MILLI(), 100, false, false)));
-  }
+    for (size_t j=i+1; j<substitutionRates_.getNumberOfColumns(); ++j)
+    {
+      substitutionRates_(i,j) = substitutionRates_(j,i) = 1.;
+      addParameter_(new Parameter(getNamespace() + "rate_"+TextTools::toString(i)+"_"+TextTools::toString(j), substitutionRates_(i,j), std::make_shared<IntervalConstraint>(NumConstants::MILLI(), 100, false, false)));
+      addParameter_(new Parameter(getNamespace() + "rate_"+TextTools::toString(j)+"_"+TextTools::toString(i), substitutionRates_(j,i), std::make_shared<IntervalConstraint>(NumConstants::MILLI(), 100, false, false)));
+    }
+  } 
   updateMatrices(); 
 }
 
 /******************************************************************************/
 
-void RatePerEntryModel::updateMatrices()
+void RatePerPairModel::updateMatrices()
 {
 
   // update parameters
-  for (size_t i=0; i<entryRates_.size(); ++i)
-    entryRates_[i] = getParameterValue("entry_rate_" + TextTools::toString(i)); 
+  for (size_t i=0; i<substitutionRates_.getNumberOfRows(); ++i)
+  {
+    for (size_t j=0; j<substitutionRates_.getNumberOfColumns(); ++j)
+    {
+      if (i != j)
+        substitutionRates_(i,j) = getParameterValue("rate_" + TextTools::toString(i) + "_" + TextTools::toString(j)); 
+    }
+  }
   freq_ = freqSet_->getFrequencies();
 
   vector<double> exitRates(size_);
@@ -94,7 +107,7 @@ void RatePerEntryModel::updateMatrices()
       for (size_t j=0; j<size_; ++j)
       {
           if (j != i)
-            exitRate += entryRates_[j];
+            exitRate += substitutionRates_(i,j);
       }
       exitRates[i] = exitRate;
   }
@@ -104,7 +117,7 @@ void RatePerEntryModel::updateMatrices()
   {
     for (size_t j=0; j<size_; ++j)
     {
-      exchangeability_(i,j) = ((i == j) ?  - exitRates[i]: entryRates_[j]);
+      exchangeability_(i,j) = ((i == j) ?  - exitRates[i]: substitutionRates_(i,j));
     }
   }
 
@@ -116,12 +129,15 @@ void RatePerEntryModel::updateMatrices()
 
 /******************************************************************************/
 
-void RatePerEntryModel::fireParameterChanged(const ParameterList& parameters)
+void RatePerPairModel::fireParameterChanged(const ParameterList& parameters)
 {
-  for (size_t i=0; i<entryRates_.size(); ++i)
+  for (size_t i=0; i<substitutionRates_.getNumberOfRows(); ++i)
   {
-    if (parameters.hasParameter(getNamespace()+"entry_rate_" + TextTools::toString(i)))
-        entryRates_[i] = parameters.getParameterValue(getNamespace()+"entry_rate_" + TextTools::toString(i));
-  }  
+    for (size_t j=0; j<substitutionRates_.getNumberOfColumns(); ++j)
+    {
+      if ((i != j) && (parameters.hasParameter(getNamespace() + "rate_" + TextTools::toString(i) + TextTools::toString(j))))
+        substitutionRates_(i,j) = substitutionRates_(j,i) = parameters.getParameterValue(getNamespace() + "rate_" + TextTools::toString(i) + TextTools::toString(j));
+    }
+  }
   CharacterSubstitutionModel::fireParameterChanged(parameters);
 }

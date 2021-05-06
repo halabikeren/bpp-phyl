@@ -18,6 +18,9 @@
 #include <Bpp/Phyl/Model/Character/CharacterSubstitutionModel.h>
 #include <Bpp/Phyl/Model/Character/SingleRateModel.h>
 #include <Bpp/Phyl/Model/Character/RatePerEntryModel.h>
+#include <Bpp/Phyl/Model/Character/RatePerExitModel.h>
+#include <Bpp/Phyl/Model/Character/RatePerPairSymModel.h>
+#include <Bpp/Phyl/Model/Character/RatePerPairModel.h>
 #include <Bpp/Phyl/Tree/TreeTemplate.h>
 #include <Bpp/Phyl/Tree/TreeTemplateTools.h>
 #include <Bpp/Phyl/Likelihood/RHomogeneousTreeLikelihood.h>
@@ -36,7 +39,7 @@ enum FreqParameterizationScope {fixed, parameterized};
 
 double getTransitionProb(size_t i, size_t j, double d, RowMatrix<double>& rates, vector<double>& freqs)
 {
-    double e = exp(-rates(0,0)*d);
+    double e = exp(rates(0,0)*d);
     if ((i == 0) && (j == 0))
     {
         return freqs[0] + freqs[1] * e;
@@ -63,10 +66,10 @@ void test_binary_model_settings(CharacterSubstitutionModel& model, RatesParamete
     {
         for (size_t j=0; j<rateMatrix.getNumberOfColumns(); ++j)
         {
-            double expectedRate =  rates(i, j) * ((i == j) ? -(1-freqs[i]) : freqs[j]);
+            double expectedRate =  rates(i, j) * ((i == j) ? (1-freqs[i]) : freqs[j]);
             if (abs(rateMatrix(i, j)-expectedRate) > 0.001)
             {
-                cerr << "accepted rate value in position ( " << i << ", " << j << ") is " << rateMatrix(i, j) << " instead of " << expectedRate << endl;
+                cerr << "accepted rate value in position (" << i << ", " << j << ") is " << rateMatrix(i, j) << " instead of " << expectedRate << endl;
                 exit(1);
             }
         }
@@ -75,37 +78,65 @@ void test_binary_model_settings(CharacterSubstitutionModel& model, RatesParamete
     // test eigen values
     vector<double> eigenvalues = model.getEigenValues();
     vector<double> expectedEigenValues(2);
-    expectedEigenValues[0] == -1 * rates(0,0);
-    if (ratesParameterizationScope == RatesParameterizationScope::ratePerEntry)
-        expectedEigenValues[0] == -rates(0,0) * freqs[0] -rates(1,1) * freqs[1];
-    if ((ratesParameterizationScope == RatesParameterizationScope::ratePerExit) | (ratesParameterizationScope == RatesParameterizationScope::ratePerPairSym) | (ratesParameterizationScope == RatesParameterizationScope::ratePerPair))
-        expectedEigenValues[0] == -rates(1,1) * freqs[0] -rates(0,0) * freqs[1];
-    for (size_t i=0; i<2; ++i)
+    expectedEigenValues[0] = expectedEigenValues[0] = -rates(1,0) * freqs[0] - rates(0,1) * freqs[1];
+    expectedEigenValues[1] = 0;
+    if (!((abs(eigenvalues[0]-expectedEigenValues[0]<0.001) && (abs(eigenvalues[1]-expectedEigenValues[1]<0.001)))
+        | (abs(eigenvalues[1]-expectedEigenValues[0]<0.001) && (abs(eigenvalues[0]-expectedEigenValues[1]<0.001)))))
     {
-        if (abs(eigenvalues[i]-expectedEigenValues[i]) > 0.001)
-        {
-            cerr << "accepted eigvalue in position 0 is " << eigenvalues[1] << " instead of 0" << endl;
-            exit(1);
-        }
+        cerr << "accepted eigvalues are not as expected. Accepted are: (" << eigenvalues[0] << ", " << eigenvalues[1] << ") while expected are (" << expectedEigenValues[0] << ", " << expectedEigenValues[1] << ")" << endl;
+        exit(1);
     }
     
     // test transition matrix - TO DO: this currently only fits the noRate and singleRate parameterization scopes, and I need to add handling of the other cases here by manually computing the closed fomulaas for eigenvectos and computing the eigen decomposition of them
-    double d = 1.;
-    RowMatrix<double> transitionMatrix = model.getPij_t(d);
-    for (size_t i=0; i<transitionMatrix.getNumberOfRows(); ++i)
+    if (ratesParameterizationScope == RatesParameterizationScope::noRate || ratesParameterizationScope == RatesParameterizationScope::singleRate)
     {
-        for (size_t j=0; j<transitionMatrix.getNumberOfColumns(); ++j)
+        double d = 1.;
+        RowMatrix<double> transitionMatrix = model.getPij_t(d);
+        for (size_t i=0; i<transitionMatrix.getNumberOfRows(); ++i)
         {
-            double expectedProb = getTransitionProb(i, j, d, rates, freqs);
-            if (abs(transitionMatrix(i, j)-expectedProb) > 0.001)
+            for (size_t j=0; j<transitionMatrix.getNumberOfColumns(); ++j)
             {
-                cerr << "accepted transition probability value in position ( " << i << ", " << j << ") is " << transitionMatrix(i, j) << " instead of " << expectedProb << endl;
+                double expectedProb = getTransitionProb(i, j, d, rates, freqs);
+                if (abs(transitionMatrix(i, j)-expectedProb) > 0.001)
+                {
+                    cerr << "accepted transition probability value in position (" << i << ", " << j << ") is " << transitionMatrix(i, j) << " instead of " << expectedProb << endl;
+                    exit(1);
+                }
+            }
+        }
+    }
+
+    // make sure you are able to change rate and frequency values
+    const ParameterList& modelParamters = model.getParameters();
+    for (size_t p=0; p<modelParamters.size(); ++p)
+    {
+        double prevParamValue = modelParamters[p].getValue();
+        double currParamValue = prevParamValue+0.1;
+        const string& parName = model.getParameterNameWithoutNamespace(modelParamters[p].getName());
+        model.setParameterValue(parName, currParamValue);
+        if (abs(modelParamters[p].getValue()-currParamValue)>0.0001)
+        {
+            cerr << "failed to modify parameter value for " << modelParamters[p].getName() << ". Instead of " << currParamValue << " the parameter value is " << modelParamters[p].getValue() << endl;
+            exit(1);
+        }
+    }
+
+    // make sure you are able to limit the range of rates
+    for (size_t p=0; p<modelParamters.size(); ++p)
+    {
+        const string& parName = model.getParameterNameWithoutNamespace(modelParamters[p].getName());
+        if ((parName.find("rate") != std::string::npos))
+        {
+            model.setParamBounds(parName, 0.1, 50);
+            const shared_ptr<Constraint> constraint = modelParamters[p].getConstraint();
+            if ((!constraint->includes(0.1, 50)) | (constraint->includes(0.05, 50)) | (constraint->includes(0.1, 51)))
+            {
+                cerr << "failed to modify boundaries of rate parameter " << parName << " to (0.1, 10)" << endl;
                 exit(1);
             }
         }
     }
 
-    // TO DO: make sure you are able to edit values
 
 }
 
@@ -150,48 +181,95 @@ void test_binary_models(const IntegerAlphabet* alpha)
     {
         for (size_t j=0; j<2; ++j)
         {
-            rateVals(i,j) = 1.;
+            rateVals(i,j) = ((i == j) ?  -1: 1);
         }
     }
-    CharacterSubstitutionModel noRatenoFreqsModel("mk", alpha, freqVals);
-    test_binary_model_settings(noRatenoFreqsModel, rateVals, freqVals);
+    CharacterSubstitutionModel noRatenoFreqsModel("mk", alpha);
+    noRatenoFreqsModel.setFrequencySet(*freqs);
+    test_binary_model_settings(noRatenoFreqsModel, RatesParameterizationScope::noRate, rateVals, freqVals);
     test_parameterization_scope(noRatenoFreqsModel, RatesParameterizationScope::noRate, FreqParameterizationScope::fixed);
 
     // no rate model
-    cout << "case 1.2: rate = 1, non-frequencies: 0.1, 0.9" << endl;
+    cout << "case 1.2: rate = 1, unequal frequencies: 0.1, 0.9" << endl;
     freqVals[0] = 0.1;
     freqVals[1] = 1-freqVals[0];
     freqs.reset(new FullIntegerFrequencySet(alpha, freqVals));
     CharacterSubstitutionModel noRateModel("mk", alpha, freqs, false);
-    test_binary_model_settings(noRateModel, rateVals, freqVals);
+    noRateModel.setFrequencySet(*freqs);
+    test_binary_model_settings(noRateModel, RatesParameterizationScope::singleRate, rateVals, freqVals);
     test_parameterization_scope(noRateModel, RatesParameterizationScope::noRate, FreqParameterizationScope::parameterized);
 
     // single rate model
-    cout << "case 1.3: rate = 42., non-frequencies: 0.1, 0.9" << endl;
+    cout << "case 1.3: rate = 42., unequal frequencies: 0.1, 0.9" << endl;
     double globalRate = 42.;
     for (size_t i=0; i<2; ++i)
     {
         for (size_t j=0; j<2; ++j)
         {
-            rateVals(i,j) = globalRate;
+            rateVals(i,j) = ((i == j) ?  -globalRate: globalRate);
         }
     }
-    SingleRateModel oneRateModel(alpha, freqs, globalRate, false);
-    test_binary_model_settings(dynamic_cast<CharacterSubstitutionModel&>(oneRateModel), rateVals, freqVals);
+    freqs.reset(new FullIntegerFrequencySet(alpha, freqVals)); // frequencies set must be reset upon each usage to avoid concatanation of namespaces of prevous models
+    SingleRateModel oneRateModel(alpha, freqs, false);
+    oneRateModel.setParameterValue("global_rate", rateVals(0,1));
+    oneRateModel.setFrequencySet(*freqs);
+    test_binary_model_settings(dynamic_cast<CharacterSubstitutionModel&>(oneRateModel), RatesParameterizationScope::singleRate, rateVals, freqVals);
     test_parameterization_scope(oneRateModel, RatesParameterizationScope::singleRate, FreqParameterizationScope::parameterized);
 
     // rate per entry model
-    cout << "case 1.4: entry rates = [2., 42.], non-frequencies: 0.1, 0.9" << endl;
-    vector<double> entryRates(2);
-    entryRates[0] = rates(0, 0) = rates(1, 0) = 2.;
-    entryRates[1] = rates(1, 0) = rates(1, 1) = 42.;
-    RatePerEntryModel ratePerEntryModel(alpha, freqs, entryRates, false);
-    test_binary_model_settings(dynamic_cast<CharacterSubstitutionModel&>(oneRateModel), rateVals, freqVals);
-    test_parameterization_scope(oneRateModel, RatesParameterizationScope::ratePerEntry, FreqParameterizationScope::parameterized);
+    cout << "case 1.4: entry rates = [2., 42.], unequal frequencies: 0.1, 0.9" << endl;
+    rateVals(1, 0) = 2.;
+    rateVals(0, 1) = 42.;
+    rateVals(0, 0) = - rateVals(0, 1);
+    rateVals(1, 1) = - rateVals(1, 0);
+    freqs.reset(new FullIntegerFrequencySet(alpha, freqVals));
+    RatePerEntryModel ratePerEntryModel(alpha, freqs, false);
+    ratePerEntryModel.setParameterValue("entry_rate_0", rateVals(1, 0));
+    ratePerEntryModel.setParameterValue("entry_rate_1", rateVals(0, 1));
+    ratePerEntryModel.setFrequencySet(*freqs);
+    test_binary_model_settings(dynamic_cast<CharacterSubstitutionModel&>(ratePerEntryModel), RatesParameterizationScope::ratePerEntry, rateVals, freqVals);
+    test_parameterization_scope(ratePerEntryModel, RatesParameterizationScope::ratePerEntry, FreqParameterizationScope::parameterized);
 
 
+    // rate per exit model
+    cout << "case 1.5: exit rates = [2., 42.], unequal frequencies: 0.1, 0.9" << endl;
+    rateVals(1, 0) = 2.;
+    rateVals(0, 1) = 42.;
+    rateVals(0, 0) = - rateVals(0, 1);
+    rateVals(1, 1) = - rateVals(1, 0);
+    freqs.reset(new FullIntegerFrequencySet(alpha, freqVals));
+    RatePerExitModel ratePerExitModel(alpha, freqs, false);
+    ratePerExitModel.setParameterValue("exit_rate_0", rateVals(0, 1));
+    ratePerExitModel.setParameterValue("exit_rate_1", rateVals(1, 0));
+    ratePerEntryModel.setFrequencySet(*freqs);
+    test_binary_model_settings(dynamic_cast<CharacterSubstitutionModel&>(ratePerExitModel), RatesParameterizationScope::ratePerExit, rateVals, freqVals);
+    test_parameterization_scope(ratePerExitModel, RatesParameterizationScope::ratePerExit, FreqParameterizationScope::parameterized);
 
+    // rate per pair symmetric model
+    cout << "case 1.6: rates(0,1)=rates(1,0)=2. unequal frequencies: 0.1, 0.9" << endl;
+    rateVals(0, 1) = rateVals(1, 0) = 2.;
+    rateVals(0, 0) = - rateVals(0, 1);
+    rateVals(1, 1) = - rateVals(1, 0);
+    freqs.reset(new FullIntegerFrequencySet(alpha, freqVals));
+    RatePerPairSymModel ratePerPairSymModel(alpha, freqs, false);
+    ratePerPairSymModel.setParameterValue("rate_0_1", rateVals(0, 1));
+    ratePerEntryModel.setFrequencySet(*freqs);
+    test_binary_model_settings(dynamic_cast<CharacterSubstitutionModel&>(ratePerPairSymModel), RatesParameterizationScope::ratePerPairSym, rateVals, freqVals);
+    test_parameterization_scope(ratePerPairSymModel, RatesParameterizationScope::ratePerPairSym, FreqParameterizationScope::parameterized);
 
+    // rate per pair model
+    cout << "case 1.7: rates(0,1)=2., rates(1,0)=42. unequal frequencies: 0.1, 0.9" << endl;
+    rateVals(0, 1) = 2.,
+    rateVals(1, 0) = 42.;
+    rateVals(0, 0) = - rateVals(0, 1);
+    rateVals(1, 1) = - rateVals(1, 0);
+    freqs.reset(new FullIntegerFrequencySet(alpha, freqVals));
+    RatePerPairModel ratePerPairModel(alpha, freqs, false);
+    ratePerPairModel.setParameterValue("rate_0_1", rateVals(0, 1));
+    ratePerPairModel.setParameterValue("rate_1_0", rateVals(1, 0));
+    ratePerEntryModel.setFrequencySet(*freqs);
+    test_binary_model_settings(dynamic_cast<CharacterSubstitutionModel&>(ratePerPairModel), RatesParameterizationScope::ratePerPair, rateVals, freqVals);
+    test_parameterization_scope(ratePerPairModel, RatesParameterizationScope::ratePerPair, FreqParameterizationScope::parameterized);
 }
 
 int main() 

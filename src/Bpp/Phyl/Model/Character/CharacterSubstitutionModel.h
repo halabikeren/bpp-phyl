@@ -57,9 +57,8 @@ public:
    *
    * @param prefix A stirng of the model name
    * @param alpha An Integer alphabet
-   * @param fixedFreqs Initial and fixed frequencies
    */
-  CharacterSubstitutionModel(const std::string& prefix, const IntegerAlphabet* alpha, const vector<double>& fixedFreqs);
+  CharacterSubstitutionModel(const std::string& prefix, const IntegerAlphabet* alpha);
 
   /**
     * @brief Build a CharacterSubstitutionModel with special equilibrium frequencies.
