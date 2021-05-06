@@ -97,7 +97,12 @@
 #include "../Model/Protein/UserProteinSubstitutionModel.h"
 #include "../Model/Protein/WAG01.h"
 #include "../Model/BinarySubstitutionModel.h"
-#include "../Model/TwoParameterBinarySubstitutionModel.h"
+#include "../Model/Character/CharacterSubstitutionModel.h"
+#include "../Model/Character/SingleRateModel.h"
+#include "../Model/Character/RatePerEntryModel.h"
+#include "../Model/Character/RatePerExitModel.h"
+#include "../Model/Character/RatePerPairSymModel.h"
+#include "../Model/Character/RatePerPairModel.h"
 #include "../Model/EquiprobableSubstitutionModel.h"
 #include "../Model/FromMixtureSubstitutionModel.h"
 #include "../Model/AbstractBiblioMixedTransitionModel.h"
@@ -149,7 +154,8 @@ unsigned char BppOSubstitutionModelFormat::PROTEIN = 4;
 unsigned char BppOSubstitutionModelFormat::CODON = 8;
 unsigned char BppOSubstitutionModelFormat::WORD = 16;
 unsigned char BppOSubstitutionModelFormat::BINARY = 32;
-unsigned char BppOSubstitutionModelFormat::ALL = 1 | 2 | 4 | 8 | 16 | 32;
+unsigned char BppOSubstitutionModelFormat::INTEGER = 64;
+unsigned char BppOSubstitutionModelFormat::ALL = 1 | 2 | 4 | 8 | 16 | 32 | 64;
 
 
 SubstitutionModel* BppOSubstitutionModelFormat::readSubstitutionModel(
@@ -817,6 +823,56 @@ SubstitutionModel* BppOSubstitutionModelFormat::readSubstitutionModel(
       }
       else
         throw Exception("Model '" + modelName + "' is unknown, or does not fit proteic alphabet.");      
+    
+    }
+    else if (AlphabetTools::isIntegerAlphabet(alphabet))
+    {
+      ////////////////////////////////////
+      //// Character (integer) model
+
+      if (!(alphabetCode_ & INTEGER))
+        throw Exception("BppOSubstitutionModelFormat::read. Integer alphabet not supported.");
+      const IntegerAlphabet* alpha = dynamic_cast<const IntegerAlphabet*>(alphabet);
+      
+      if (modelName.find("+F") != string::npos) {
+        string freqOpt = ApplicationTools::getStringParameter("frequencies", args, "Full", "", true, warningLevel_);
+        BppOFrequencySetFormat freqReader(BppOFrequencySetFormat::ALL, false, warningLevel_);
+        auto intFreq(freqReader.readFrequencySet(alpha, freqOpt, data, true));
+  
+        map<string, string> unparsedParameterValuesNested(freqReader.getUnparsedArguments());
+
+        for (map<string, string>::iterator it = unparsedParameterValuesNested.begin(); it != unparsedParameterValuesNested.end(); it++)
+        {
+          unparsedArguments_[modelName + "." + it->first] = it->second;
+        }
+
+        if (modelName == "mk+F")
+          model.reset(new CharacterSubstitutionModel("mk", alpha, dynamic_pointer_cast<IntegerFrequencySet>(intFreq)));
+        else if (modelName == "SingleRate+F")
+          model.reset(new SingleRateModel(alpha, dynamic_pointer_cast<IntegerFrequencySet>(intFreq)));
+        else if (modelName == "RatePerEntry+F")
+          model.reset(new RatePerEntryModel(alpha, dynamic_pointer_cast<IntegerFrequencySet>(intFreq)));
+        else if (modelName == "RatePerExit+F")
+          model.reset(new RatePerExitModel(alpha, dynamic_pointer_cast<IntegerFrequencySet>(intFreq)));
+        else if (modelName == "RatePerPairSym+F")
+          model.reset(new RatePerPairSymModel(alpha, dynamic_pointer_cast<IntegerFrequencySet>(intFreq)));
+        else if (modelName == "RatePerPair+F")
+          model.reset(new RatePerPairModel(alpha, dynamic_pointer_cast<IntegerFrequencySet>(intFreq)));
+      }
+      else if (modelName == "mk")
+        model.reset(new CharacterSubstitutionModel("mk", alpha));
+      else if (modelName == "SingleRate")
+        model.reset(new SingleRateModel(alpha));
+      else if (modelName == "RatePerEntry")
+        model.reset(new RatePerEntryModel(alpha));
+      else if (modelName == "RatePerExit")
+        model.reset(new RatePerExitModel(alpha));
+      else if (modelName == "RatePerPairSym")
+        model.reset(new RatePerPairSymModel(alpha));
+      else if (modelName == "RatePerPair")
+        model.reset(new RatePerPairModel(alpha));
+      else
+        throw Exception("Model '" + modelName + "' is unknown, or does not fit integer alphabet.");    
     }
     else if (AlphabetTools::isBinaryAlphabet(alphabet))
     {
@@ -827,8 +883,6 @@ SubstitutionModel* BppOSubstitutionModelFormat::readSubstitutionModel(
       
       if (modelName == "Binary")
         model.reset(new BinarySubstitutionModel(balpha));
-      else if (modelName == "TwoParameterBinary")
-        model.reset(new TwoParameterBinarySubstitutionModel(balpha));
       else
         throw Exception("Model '" + modelName + "' unknown, or does not fit binary alphabet.");
     }
