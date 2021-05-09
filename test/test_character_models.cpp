@@ -107,7 +107,7 @@ void test_binary_model_settings(CharacterSubstitutionModel& model, RatesParamete
     }
 
     // make sure you are able to change rate and frequency values
-    const ParameterList& modelParamters = model.getParameters();
+    const ParameterList& modelParamters = model.getParameters(); // bug - model with frequencies parameterization only retreives rate parameters
     for (size_t p=0; p<modelParamters.size(); ++p)
     {
         double prevParamValue = modelParamters[p].getValue();
@@ -172,8 +172,6 @@ void test_binary_models(const IntegerAlphabet* alpha)
     RowMatrix<double> rateVals(2, 2);
     vector<double> freqVals(2);
     freqVals[0] = freqVals[1] = 0.5;
-    shared_ptr<IntegerFrequencySet> freqs;
-    freqs.reset(new FullIntegerFrequencySet(alpha, freqVals));
 
     // no rate no freqs model
     cout << "case 1.1: rate = 1, equal frequencies: 0.5, 0.5" << endl;
@@ -185,11 +183,11 @@ void test_binary_models(const IntegerAlphabet* alpha)
         }
     }
     CharacterSubstitutionModel noRatenoFreqsModel("mk", alpha);
-    noRatenoFreqsModel.setFrequencySet(*freqs);
     test_binary_model_settings(noRatenoFreqsModel, RatesParameterizationScope::noRate, rateVals, freqVals);
     test_parameterization_scope(noRatenoFreqsModel, RatesParameterizationScope::noRate, FreqParameterizationScope::fixed);
 
     // no rate model
+    shared_ptr<IntegerFrequencySet> freqs;
     cout << "case 1.2: rate = 1, unequal frequencies: 0.1, 0.9" << endl;
     freqVals[0] = 0.1;
     freqVals[1] = 1-freqVals[0];
@@ -241,7 +239,7 @@ void test_binary_models(const IntegerAlphabet* alpha)
     RatePerExitModel ratePerExitModel(alpha, freqs, false);
     ratePerExitModel.setParameterValue("exit_rate_0", rateVals(0, 1));
     ratePerExitModel.setParameterValue("exit_rate_1", rateVals(1, 0));
-    ratePerEntryModel.setFrequencySet(*freqs);
+    ratePerExitModel.setFrequencySet(*freqs);
     test_binary_model_settings(dynamic_cast<CharacterSubstitutionModel&>(ratePerExitModel), RatesParameterizationScope::ratePerExit, rateVals, freqVals);
     test_parameterization_scope(ratePerExitModel, RatesParameterizationScope::ratePerExit, FreqParameterizationScope::parameterized);
 
@@ -253,7 +251,7 @@ void test_binary_models(const IntegerAlphabet* alpha)
     freqs.reset(new FullIntegerFrequencySet(alpha, freqVals));
     RatePerPairSymModel ratePerPairSymModel(alpha, freqs, false);
     ratePerPairSymModel.setParameterValue("rate_0_1", rateVals(0, 1));
-    ratePerEntryModel.setFrequencySet(*freqs);
+    ratePerPairSymModel.setFrequencySet(*freqs);
     test_binary_model_settings(dynamic_cast<CharacterSubstitutionModel&>(ratePerPairSymModel), RatesParameterizationScope::ratePerPairSym, rateVals, freqVals);
     test_parameterization_scope(ratePerPairSymModel, RatesParameterizationScope::ratePerPairSym, FreqParameterizationScope::parameterized);
 
@@ -267,7 +265,7 @@ void test_binary_models(const IntegerAlphabet* alpha)
     RatePerPairModel ratePerPairModel(alpha, freqs, false);
     ratePerPairModel.setParameterValue("rate_0_1", rateVals(0, 1));
     ratePerPairModel.setParameterValue("rate_1_0", rateVals(1, 0));
-    ratePerEntryModel.setFrequencySet(*freqs);
+    ratePerPairModel.setFrequencySet(*freqs);
     test_binary_model_settings(dynamic_cast<CharacterSubstitutionModel&>(ratePerPairModel), RatesParameterizationScope::ratePerPair, rateVals, freqVals);
     test_parameterization_scope(ratePerPairModel, RatesParameterizationScope::ratePerPair, FreqParameterizationScope::parameterized);
 }
