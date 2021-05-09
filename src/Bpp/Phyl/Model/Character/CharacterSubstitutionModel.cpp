@@ -63,7 +63,7 @@ CharacterSubstitutionModel::CharacterSubstitutionModel(const std::string& prefix
   AbstractSubstitutionModel(alpha, shared_ptr<const StateMap>(new CanonicalStateMap(alpha, false)), prefix+"."),
   freqSet_(0)
 {
-  vector<double> fixedFreqs(size_, 1/size_);
+  vector<double> fixedFreqs(size_, 1./static_cast<double>(size_));
   freqSet_.reset(new FixedIntegerFrequencySet(alpha, fixedFreqs));
   updateMatrices();
 }
@@ -127,7 +127,7 @@ void CharacterSubstitutionModel::fireParameterChanged(const ParameterList& param
 void CharacterSubstitutionModel::setFrequencySet(const IntegerFrequencySet& freqSet)
 {
   freqSet_ = shared_ptr<IntegerFrequencySet>(dynamic_cast<IntegerFrequencySet*>(freqSet.clone()));
-  resetParameters_();
+  deleteParameters_(freqSet_->getParameters().getParameterNames()); // delete only previous frequency parameters
   addParameters_(freqSet_->getParameters());
 }
 
