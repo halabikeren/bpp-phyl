@@ -31,155 +31,155 @@ The fact that you are presently reading this means that you have had
 knowledge of the CeCILL license and that you accept its terms.
 */
 
-#include <Bpp/Seq/App/SequenceApplicationTools.h>
-#include <Bpp/Phyl/Model/Codon/YNGP_M2.h>
+
+#include <Bpp/Numeric/Matrix/MatrixTools.h>
+#include <Bpp/Numeric/Prob/Simplex.h>
+#include <Bpp/Seq/Alphabet/AlphabetTools.h>
+#include <Bpp/Phyl/Io/Newick.h>
+#include <Bpp/Phyl/Tree/PhyloTree.h>
+#include <Bpp/Phyl/App/PhylogeneticsApplicationTools.h>
 #include <Bpp/Phyl/Model/Codon/RELAX.h>
 #include <Bpp/Phyl/Model/FrequencySet/CodonFrequencySet.h>
-#include <Bpp/Seq/Alphabet/AlphabetTools.h>
-#include <Bpp/Seq/Alphabet/CodonAlphabet.h>
 #include <Bpp/Seq/GeneticCode/StandardGeneticCode.h>
-#include <Bpp/Numeric/Function/ReparametrizationFunctionWrapper.h>
-#include <Bpp/Numeric/Random/RandomTools.h>
-#include <Bpp/Phyl/Tree/TreeTemplate.h>
-#include <Bpp/Phyl/Likelihood/RHomogeneousMixedTreeLikelihood.h>
-#include <Bpp/Phyl/Likelihood/DRHomogeneousMixedTreeLikelihood.h>
-#include <Bpp/Phyl/Likelihood/RNonHomogeneousMixedTreeLikelihood.h>
-#include <Bpp/Phyl/Likelihood/DRNonHomogeneousTreeLikelihood.h>
-#include <Bpp/Phyl/Likelihood/RASTools.h>
-#include <Bpp/Phyl/PatternTools.h>
-#include <Bpp/Phyl/App/PhylogeneticsApplicationTools.h>
-#include <Bpp/Phyl/Model/SubstitutionModelSetTools.h>
 #include <Bpp/Phyl/Model/RateDistribution/ConstantRateDistribution.h>
-#include <iostream>
+#include <Bpp/Phyl/OptimizationTools.h>
 
+#include <Bpp/Phyl/NewLikelihood/ParametrizablePhyloTree.h>
+
+#include <Bpp/Phyl/NewLikelihood/NonHomogeneousSubstitutionProcess.h>
+#include <Bpp/Phyl/NewLikelihood/SubstitutionProcessCollection.h>
+#include <Bpp/Phyl/NewLikelihood/MixtureSequenceEvolution.h>
+
+
+#include <Bpp/Phyl/NewLikelihood/PhyloLikelihoods/MixtureProcessPhyloLikelihood.h>
+#include <Bpp/Phyl/NewLikelihood/PhyloLikelihoods/MixtureOfAlignedPhyloLikelihood.h>
+#include <Bpp/Phyl/NewLikelihood/PhyloLikelihoods/SingleProcessPhyloLikelihood.h>
+#include <Bpp/Phyl/NewLikelihood/PhyloLikelihoods/FormulaOfPhyloLikelihood.h>
+
+#include <iostream>
 
 using namespace bpp;
 using namespace std;
 
 
-void printModelParameters(TreeLikelihood* tl)
-{
-  ParameterList parameters = tl->getParameters();
-  for (size_t i = 0; i < parameters.size(); i++)
-  {
-    ApplicationTools::displayResult(parameters[i].getName(), TextTools::toString(parameters[i].getValue()));
-  }
-  cout << "\n" << endl;
-}
-
-
 int main() 
 {
-/*    try
+    try
     {
         // process tree
-        TreeTemplate<Node>* tree = TreeTemplateTools::parenthesisToTree("(((A:0.01, B:0.01):0.02,C:0.03):0.01,D:0.04);");
-        Tree* ttree = dynamic_cast<Tree*>(tree);
+        Newick reader;
+        unique_ptr<PhyloTree> tree(reader.parenthesisToPhyloTree("(((A:0.01, B:0.01):0.02,C:0.03):0.01,D:0.04);"));
+        auto parTree = make_shared<ParametrizablePhyloTree>(*tree);
 
         // process sequence data
-        map<string, string> alphabetParams;
-        alphabetParams["alphabet"] = "Codon(letter=DNA)";
-        alphabetParams["genetic_code"] = "Standard";
-        const Alphabet* nucAlphabet = SequenceApplicationTools::getAlphabet(alphabetParams, "", false);
-        const CodonAlphabet* alphabet = dynamic_cast<const CodonAlphabet*>(nucAlphabet);
-        unique_ptr<GeneticCode> gCode;
-        gCode.reset(SequenceApplicationTools::getGeneticCode(alphabet->getNucleicAlphabet(), "Standard"));
+        const CodonAlphabet* alphabet = &AlphabetTools::DNA_CODON_ALPHABET;
         VectorSiteContainer sites(alphabet);
         sites.addSequence(BasicSequence("A", "AAATGGCTGTGCACGTCT", alphabet));
         sites.addSequence(BasicSequence("B", "AACTGGATCTGCATGTCT", alphabet));
         sites.addSequence(BasicSequence("C", "ATCTGGACGTGCACGTGT", alphabet));
         sites.addSequence(BasicSequence("D", "CAACGGGAGTGCGCCTAT", alphabet));
 
-        // set partition A and feed it to the RELAX model with k=1
-        map<string,string> params;
-        params["model1"] = "RELAX(kappa=2.0,p=0.1,omega1=1.0,omega2=2.0,k=1.0,theta1=0.5,theta2=0.8,Frequency=F0)";
-        params["model2"] = "RELAX(kappa=RELAX.kappa_1,p=RELAX.p_1,omega1=RELAX.omega1_1,omega2=RELAX.omega2_1,theta1=RELAX.theta1_1,theta2=RELAX.theta2_1,Frequency=F0,k=1.0)";
-        params["nonhomogeneous"]="general";
-        params["nonhomogeneous.number_of_models"] = "2";
-        params["nonhomogeneous.stationarity"] = "yes";
-        params["site.number_of_paths"] = "2";                               // the 3rd path mapping omega3 in the branches under chatacter states 0 and 1 is imlies the the other two paths
-        params["site.path1"] = "model1[YN98.omega_1]&model2[YN98.omega_1]"; // map omega1 in the branches under character state 0 (=model1) to omega1 in the branches under character state 1 (=model2) 
-        params["site.path2"] = "model1[YN98.omega_2]&model2[YN98.omega_2]"; // these to complement the path of omega2
-        params["model1.nodes_id"] = "0";
-        params["model2.nodes_id"] = "1,2,3,4,5";
-        SubstitutionModelSet* RELAXModel = PhylogeneticsApplicationTools::getSubstitutionModelSet(alphabet, gCode.get(), dynamic_cast<const SiteContainer*>(&sites), params);
-		MixedSubstitutionModelSet* RELAXModel_1 = dynamic_cast<MixedSubstitutionModelSet*>(RELAXModel);
+        //// create a branch-site model with two site-categories and three site categories
+        auto gc = make_shared<StandardGeneticCode>(AlphabetTools::DNA_ALPHABET);
+        auto rdist = make_shared<ConstantRateDistribution>();
+        shared_ptr<FrequencySet> bgRootFreqs = CodonFrequencySet::getFrequencySetForCodons(CodonFrequencySet::F3X4, gc.get());
+        auto bgModel = make_shared<RELAX>(gc.get(), bgRootFreqs);
+        shared_ptr<FrequencySet> fgRootFreqs = CodonFrequencySet::getFrequencySetForCodons(CodonFrequencySet::F3X4, gc.get());
+        auto fgModel = make_shared<RELAX>(gc.get(), fgRootFreqs);
 
-        // create likelihood function
-        ConstantRateDistribution* rdist = new ConstantRateDistribution();
-        RNonHomogeneousMixedTreeLikelihood* RELAXTreeLikelihood_1 = new RNonHomogeneousMixedTreeLikelihood(*ttree, dynamic_cast<const SiteContainer&>(sites), RELAXModel_1, rdist, true, false);
-        RELAXTreeLikelihood_1->initialize();
-        double RELAXLogLikelihood_1 = -1*RELAXTreeLikelihood_1->getValue();
+        NonHomogeneousSubstitutionProcess* subProc=new NonHomogeneousSubstitutionProcess(rdist->clone(), parTree->clone());
+        Vuint vP1m1{0}; // branches of bgModel
+        Vuint vP1m2{1, 2, 3, 4, 5}; // branches of fgModel
+        subProc->addModel(std::shared_ptr<RELAX>(bgModel->clone()),vP1m1);
+        subProc->addModel(std::shared_ptr<RELAX>(fgModel->clone()),vP1m2);
 
-        // set partition 2 -> make sure likelihood has not changed
-        params["model1.nodes_id"] = "1,2,3,4,5";
-        params["model2.nodes_id"] = "0";
-        MixedSubstitutionModelSet* RELAXModel_2 = dynamic_cast<MixedSubstitutionModelSet*>(PhylogeneticsApplicationTools::getSubstitutionModelSet(alphabet, gCode.get(), dynamic_cast<const SiteContainer*>(&sites), params));
-        RNonHomogeneousMixedTreeLikelihood* RELAXTreeLikelihood_2 = new RNonHomogeneousMixedTreeLikelihood(*ttree, dynamic_cast<const SiteContainer&>(sites), RELAXModel_2, rdist, true, false);
-        RELAXTreeLikelihood_2->initialize();
-        double RELAXLogLikelihood_2 = -1*RELAXTreeLikelihood_2->getValue();
-        if (abs(RELAXLogLikelihood_1 - RELAXLogLikelihood_2) > 0.001)
+        auto modelColl=make_shared<SubstitutionProcessCollection>();
+        modelColl->addModel(bgModel, 1);
+        modelColl->addModel(fgModel, 2);
+        modelColl->addFrequencies(bgRootFreqs, 1);
+        modelColl->addFrequencies(fgRootFreqs, 2);
+        modelColl->addDistribution(rdist, 1);
+        modelColl->addTree(parTree, 1);
+
+        map<size_t, Vuint> mModBr;
+        mModBr[1]=vP1m1;
+        mModBr[2]=vP1m2;
+        modelColl->addSubstitutionProcess(1, mModBr, 1, 1, 1);
+
+        vector<size_t> vp(1);
+        vp[0]=1;
+        MixtureSequenceEvolution mse(modelColl.get(), vp);
+
+        // alias parameters
+        map<string,string> sharedParamsMap = {
+            {"RELAX.kappa_1", "RELAX.kappa_2"},
+            {"RELAX.p_1", "RELAX.p_2"},
+            {"RELAX.omega1_1", "RELAX.omega1_2"},
+            {"RELAX.omega2_1", "RELAX.omega2_2"},
+            {"RELAX.theta1_1", "RELAX.theta1_2"},
+            {"RELAX.theta2_1", "RELAX.theta2_2"},
+            {"RELAX.1_Full.theta_1", "RELAX.1_Full.theta_2"}, // why do I need F3X4 paramters prefices to be both "RELAX" and "YN98"?
+            {"RELAX.1_Full.theta1_1", "RELAX.1_Full.theta1_2"},
+            {"RELAX.1_Full.theta2_1", "RELAX.1_Full.theta2_2"},
+            {"RELAX.2_Full.theta_1", "RELAX.2_Full.theta_2"},
+            {"RELAX.2_Full.theta1_1", "RELAX.2_Full.theta1_2"},
+            {"RELAX.2_Full.theta2_1", "RELAX.2_Full.theta2_2"},
+            {"RELAX.3_Full.theta_1", "RELAX.3_Full.theta_2"},
+            {"RELAX.3_Full.theta1_1", "RELAX.3_Full.theta1_2"},
+            {"RELAX.3_Full.theta2_1", "RELAX.3_Full.theta2_2"},
+            {"YN98.1_Full.theta_1", "YN98.1_Full.theta_2"},
+            {"YN98.1_Full.theta1_1", "YN98.1_Full.theta1_2"},
+            {"YN98.1_Full.theta2_1", "YN98.1_Full.theta2_2"},
+            {"YN98.2_Full.theta_1", "YN98.2_Full.theta_2"},
+            {"YN98.2_Full.theta1_1", "YN98.2_Full.theta1_2"},
+            {"YN98.2_Full.theta2_1", "YN98.2_Full.theta2_2"},
+            {"YN98.3_Full.theta_1", "YN98.3_Full.theta_2"},
+            {"YN98.3_Full.theta1_1", "YN98.3_Full.theta1_2"},
+            {"YN98.3_Full.theta2_1", "YN98.3_Full.theta2_2"},
+        };
+        modelColl->aliasParameters(sharedParamsMap, true);
+        ParameterList aliasedParams = modelColl->getIndependentParameters();
+        cout << "aliased parameters: " << endl;
+        for (size_t p=0; p<aliasedParams.size(); ++p)
         {
-            cout << "Error! different likelihood is computed in RELAX for different partitions when k=1" << endl;
-            return 1;
+            cout << aliasedParams[p].getName() << endl;
         }
 
-        // make sure you receive the same likelihood as YNGP_M2 (simple site model)
-        map<string,string> m2params;
-        m2params["model"] = "YNGP_M2(kappa=2.0,omega0=0.1,omega2=2.0,theta1=0.5,theta2=0.8,Frequency=F0)";
-        m2params["nonhomogeneous"] = "no";
-        TransitionModel* M2Model = PhylogeneticsApplicationTools::getTransitionModel(alphabet, gCode.get(), dynamic_cast<const SiteContainer*>(&sites), m2params);
-        RHomogeneousMixedTreeLikelihood* M2TreeLikelihood = new RHomogeneousMixedTreeLikelihood(*ttree, dynamic_cast<const SiteContainer&>(sites), M2Model, rdist, true, false);
-        M2TreeLikelihood->initialize();
-        double M2LogLikelihood = -1*M2TreeLikelihood->getValue();
-        if (abs(RELAXLogLikelihood_1 - M2LogLikelihood) > 0.001)
-        {
-            cout << "Error! RELAX when k=1 yields different likelihood than M2 model" << endl;
-			cout << "RELAX Log Likelihood: " << RELAXLogLikelihood_1 << endl;
-			printModelParameters(RELAXTreeLikelihood_1);
-			cout << "M2 Log Likelihood: " << M2LogLikelihood << endl;
-			printModelParameters(M2TreeLikelihood);
-            //return 1;
-        }
+        // create a likelihood nodes for each branch category
+        Context context;
+        auto pc(std::make_shared<PhyloLikelihoodContainer>(context, *modelColl));
+        SubstitutionProcess* sP=subProc->clone();
+        auto lik = std::make_shared<LikelihoodCalculationSingleProcess>(context, sites, *sP);
+        pc->addPhyloLikelihood(1, new SingleProcessPhyloLikelihood(context, lik));
+        auto collNodes = pc->getCollectionNodes();
+
+        // create a mixture likelihood function
+        MixtureProcessPhyloLikelihood mlc(*sites.clone(), mse, *collNodes);
+
+        // print model parameter values
+        cout << "\n\ninitial parameter values" << endl;
+        mlc.getParameters().printParameters(std::cout);
+
+        // report likelihood
+        cout << "\n\ninitial likelihood: " << -mlc.getValue() << endl;
+
         
-        // set k to 2 -> fit two YNGP_M2 copies with the induced omega values and make sure the smae likelihood is obtained
-        RELAXTreeLikelihood_2->setParameterValue("RELAX.k_2", 2);
-		RELAXTreeLikelihood_2->computeTreeLikelihood();
-        // make sure that updating other parameters except for k is done sucessfully 
-        double RELAXLogLikelihood_3 = -1*RELAXTreeLikelihood_2->getValue();
+        // optimize likelihood function
+        OutputStream* profiler  = new StlOutputStream(new ofstream("profile.txt", ios::out));
+        OutputStream* messenger = new StlOutputStream(new ofstream("messages.txt", ios::out));
+        OptimizationTools::optimizeNumericalParameters2(&mlc, mlc.getParameters(), 0, 0.01, 100, messenger, profiler, false, false, 1, OptimizationTools::OPTIMIZATION_NEWTON);
 
-        params["model1"] = "YNGP_M2(kappa=2.0,omega0=0.1,omega2=2.0,theta1=0.5,theta2=0.8,Frequency=F0)";
-        params["model2"] = "YNGP_M2(kappa=YNGP_M2.kappa_1,omega0=0.01,omega2=4,theta1=YNGP_M2.theta1_1,theta2=YNGP_M2.theta2_1,Frequency=F0)";
-        MixedSubstitutionModelSet* DoubleM2Model = dynamic_cast<MixedSubstitutionModelSet*>(PhylogeneticsApplicationTools::getSubstitutionModelSet(alphabet, gCode.get(), dynamic_cast<const SiteContainer*>(&sites), params));
-        RNonHomogeneousMixedTreeLikelihood* DoubleM2TreeLikelihood = new RNonHomogeneousMixedTreeLikelihood(*ttree, dynamic_cast<const SiteContainer&>(sites), DoubleM2Model, rdist, true, false);
-        DoubleM2TreeLikelihood->initialize();
-        double DoubleM2LogLikelihood = -1*DoubleM2TreeLikelihood->getValue(); 
-        if (abs(RELAXLogLikelihood_3 - DoubleM2LogLikelihood) > 0.001)
-        {
-            cout << "Error! RELAX yields different likelihood from two copies of YNGP_M2 that produce the same BG and FG as RELAX" << endl;
-			cout << "RELAX Log Likelihood: " << RELAXLogLikelihood_3 << endl;
-			printModelParameters(RELAXTreeLikelihood_2);
-			cout << "M2 Log Likelihood: " << DoubleM2LogLikelihood << endl;
-			printModelParameters(DoubleM2TreeLikelihood);
-            return 1;
-        }  
+        // print optimized parameter values - TO DO: aliasing didn't work! 
+        cout << "\n\nparameter values following optimization" << endl;
+        mlc.getParameters().printParameters(std::cout);
 
-        // free resources
-        delete rdist;
-        delete RELAXTreeLikelihood_1;
-        delete RELAXModel_1;
-        delete RELAXTreeLikelihood_2;
-        delete RELAXModel_2;
-        delete M2Model;
-        delete M2TreeLikelihood;
-        delete DoubleM2Model;
-        delete DoubleM2TreeLikelihood;
+        // report likelihood 
+        cout << "\n\nlikelihood following optimization: " << -mlc.getValue() << endl;
     }
     catch (exception & e)
     {
         cout << e.what() << endl;
         return 1;
     }
-*/
   return 0;
 }
