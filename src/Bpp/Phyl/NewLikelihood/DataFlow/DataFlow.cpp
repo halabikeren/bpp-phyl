@@ -289,14 +289,14 @@ namespace bpp {
    * Context.
    */
   NodeRef Context::cached (NodeRef && newNode) {
-    assert (newNode != nullptr);
+    //assert (newNode != nullptr);
     // Try inserting it, which will fail if already present and return the old one
     auto r = nodeCache_.emplace (std::move (newNode));
     return r.first->ref;
   }
 
   NodeRef Context::cached (NodeRef& newNode) {
-    assert (newNode != nullptr);
+    //assert (newNode != nullptr);
     // First remove this object from the set if it is already      
     for (auto it=nodeCache_.begin();it!=nodeCache_.end();)
     {
