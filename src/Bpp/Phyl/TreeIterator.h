@@ -40,8 +40,8 @@
 #ifndef _TREEITERATORS_H
 #define _TREEITERATORS_H
 
-#include "TreeTemplate.h"
-#include "Node.h"
+#include "./Tree/PhyloTree.h"
+#include "./Tree/PhyloNode.h"
 
 // From the STL:
 #include <string>
@@ -71,17 +71,17 @@ namespace bpp
     class TreeIterator                               // abstract class from which each iterator type inherits
     {
     protected:
-        const TreeTemplate<Node>& tree_;             // The tree to iterate over its nodes. Can't be const because user should be allowed to edit the nodes of the tree during the traversal.
-        const Node* currNode_;                       // A pointer to the current node visited by the iterator. Can't be const because user should be allowed to edit the nodes of the tree during the traversal.
+        const PhyloTree& tree_;             // The tree to iterate over its nodes. Can't be const because user should be allowed to edit the nodes of the tree during the traversal.
+        shared_ptr<PhyloNode> currNode_;                       // A pointer to the current node visited by the iterator. Can't be const because user should be allowed to edit the nodes of the tree during the traversal.
         map<int, bool> nodeToVisited_;               // a map that matches to each node id of booleans that for each node id states if it is visited or not
         map<int, bool> nodeToSonVisited_;            // a map that matches to each node id if a son of his was visited or not
         map<int, size_t> nodeToLastVisitedSonIndex_; // a map that matches to each node id the index of its last visited son visited son
 
     public:
         /* constructors and destructors */
-        explicit TreeIterator(const TreeTemplate<Node>& tree):
+        explicit TreeIterator(const PhyloTree& tree):
                 tree_(tree),
-                currNode_(tree.getRootNode()), // The pointer to the initial node is initialized as 0 since it's actual assignment depends on which traversal is chosen
+                currNode_(tree.getRoot()), // The pointer to the initial node is initialized as 0 since it's actual assignment depends on which traversal is chosen
                 nodeToVisited_(),
                 nodeToSonVisited_(),
                 nodeToLastVisitedSonIndex_()
@@ -89,7 +89,7 @@ namespace bpp
 
         explicit TreeIterator(const TreeIterator& tree_iterator):
                 tree_(tree_iterator.tree_),
-                currNode_(tree_.getRootNode()),
+                currNode_(tree_.getRoot()),
                 nodeToVisited_(),
                 nodeToSonVisited_(),
                 nodeToLastVisitedSonIndex_()
@@ -102,10 +102,10 @@ namespace bpp
         void init();
         // function to initialize nodes properties
         /* iterating functions */
-        const Node* begin();
-        virtual const Node* next() = 0;                     // Set as virtual because the function should be implemented separately in each iterator type
+        shared_ptr<PhyloNode> begin();
+        virtual shared_ptr<PhyloNode> next() = 0;                     // Set as virtual because the function should be implemented separately in each iterator type
         TreeIterator& operator++();
-        const Node* end(){ return NULL; }
+        shared_ptr<PhyloNode> end(){ return NULL; }
     };
 
 
@@ -114,15 +114,15 @@ namespace bpp
     public:
 
         /* constructors and destructors */
-        explicit PostOrderTreeIterator(const TreeTemplate<Node>& tree):
+        explicit PostOrderTreeIterator(const PhyloTree& tree):
                 TreeIterator(tree) {
-            currNode_ = tree_.getNodes()[0]; // Get the leftmost leaf of the tree
+            currNode_ = tree_.getAllLeaves()[0]; // Get the leftmost leaf of the tree
         }
 
         ~PostOrderTreeIterator() {};           // Inherited from TreeIterator
 
-        const Node* getLeftMostPredecessor(const Node* startNode);
-        const Node* next();
+        shared_ptr<PhyloNode> getLeftMostPredecessor(shared_ptr<PhyloNode> startNode);
+        shared_ptr<PhyloNode> next();
     };
 
 
@@ -131,14 +131,14 @@ namespace bpp
     public:
 
         /* constructors and destructors */
-        explicit PreOrderTreeIterator(const TreeTemplate<Node>& tree):
+        explicit PreOrderTreeIterator(const PhyloTree& tree):
                 TreeIterator(tree) {
-            currNode_ = tree_.getRootNode();
+            currNode_ = tree_.getRoot();
         }
 
         ~PreOrderTreeIterator() {};           // Inherited from TreeIterator
 
-        const Node* next();
+        shared_ptr<PhyloNode> next();
     };
 
 
@@ -147,15 +147,15 @@ namespace bpp
     public:
 
         /* constrcutors and destrcutors */
-        explicit InOrderTreeIterator(const TreeTemplate<Node>& tree):
+        explicit InOrderTreeIterator(const PhyloTree& tree):
                 TreeIterator(tree) {
-            currNode_ = tree_.getNodes()[0];  // Get the leftmost leaf of the tree
+            currNode_ = tree_.getAllLeaves()[0];  // Get the leftmost leaf of the tree
         }
 
         ~InOrderTreeIterator() {};           // Inherited from TreeIterator
 
-        const Node* doStep(const Node* node);
-        const Node* next();
+        shared_ptr<PhyloNode> doStep(shared_ptr<PhyloNode> node);
+        shared_ptr<PhyloNode> next();
     };
 
 
