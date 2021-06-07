@@ -275,7 +275,7 @@ int main()
     try
     {
         
-        const IntegerAlphabet* int_alphabet = new IntegerAlphabet(1);
+        const IntegerAlphabet* int_alphabet = new IntegerAlphabet(2);
         test_binary_models(int_alphabet);
     }
         catch (exception & e)
