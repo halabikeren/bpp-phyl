@@ -129,7 +129,7 @@ shared_ptr<PhyloNode> PreOrderTreeIterator::next()
     // by the time you visit currNode_, all its ancestors and left brothers (if exist) were already visited
     if (!hasVisitedSons && numOfSons > 0)
     {
-        currNode_ = tree_.getSons(currNode_)[0]; // this somehow modifies the value of nodeToSonVisited_[tree_.getNodeIndex(father)] to true... how?
+        currNode_ = tree_.getSons(currNode_)[0];
     }
         // as long as there are still sons to visit -> visit the leftmost unvisited son
     else if (hasVisitedSons && nodeToLastVisitedSonIndex_[tree_.getNodeIndex(currNode_)] < numOfSons-1)
