@@ -49,7 +49,6 @@ set (CPP_FILES
   Bpp/Phyl/Likelihood/DRNonHomogeneousTreeLikelihood.cpp
   Bpp/Phyl/Likelihood/DRTreeLikelihoodTools.cpp
   Bpp/Phyl/Likelihood/GlobalClockTreeLikelihoodFunctionWrapper.cpp
-  Bpp/Phyl/Likelihood/JointLikelihoodFunction.cpp
   Bpp/Phyl/Likelihood/MarginalAncestralStateReconstruction.cpp
   Bpp/Phyl/Likelihood/NNIHomogeneousTreeLikelihood.cpp
   Bpp/Phyl/Likelihood/PairedSiteLikelihoods.cpp
@@ -232,12 +231,14 @@ set (CPP_FILES
   Bpp/Phyl/Model/SubstitutionModelSetTools.cpp
   Bpp/Phyl/Model/TransitionFromTransitionModel.cpp
   Bpp/Phyl/Model/WordSubstitutionModel.cpp
+  Bpp/Phyl/Model/CompoundTransitionModel.cpp
   Bpp/Phyl/OptimizationTools.cpp
   Bpp/Phyl/Parsimony/AbstractTreeParsimonyScore.cpp
   Bpp/Phyl/Parsimony/DRTreeParsimonyData.cpp
   Bpp/Phyl/Parsimony/DRTreeParsimonyScore.cpp
   Bpp/Phyl/PatternTools.cpp
   Bpp/Phyl/PhyloStatistics.cpp
+  Bpp/Phyl/TreeIterator.cpp
   Bpp/Phyl/Simulation/MutationProcess.cpp
   Bpp/Phyl/Simulation/EvolutionSequenceSimulator.cpp
   Bpp/Phyl/Simulation/GivenDataSubstitutionProcessSequenceSimulator.cpp
