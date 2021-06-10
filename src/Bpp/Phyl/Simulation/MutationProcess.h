@@ -120,7 +120,7 @@ namespace bpp
     /**
      * @return A pointer toward the vector of times seperating between the visited states in the path.
      */
-    const std::vector<double> getTimes() const { return times_; }
+    const std::vector<double> getTimes() const { return times_; } 
     /**
      * @brief Add a new mutation event.
      *
