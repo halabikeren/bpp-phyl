@@ -130,14 +130,50 @@ namespace bpp
         shared_ptr<const PhyloTree> getBaseTree() { return tree_; }
 
         /*
+        *
         * @brief generates a stochastic mappings based on the sampling
-        * parameters
-        *
-        * @param            Number of histories to sample
-        * @param mappings   Vector of shared Trees  that will hold the sampled stochastic mappings.
-        *
+        * 
         */
-        vector<TreeMapping> generateStochasticMapping();
+        vector<TreeMapping> generateStochasticMappings();
+
+        /*
+        * @brief compute the distance between two mappings as the complement of their overlap precentage
+        * parameters
+        * 
+        * @param  mapping1  first mapping
+        * @param  mapping2  second mapping
+        * 
+        */        
+        double getDistance(const TreeMapping& mapping1, const TreeMapping& mapping2);
+
+        /*
+        * @brief compute the distance between two branch mappings in the form of mutation paths as the complement of their overlap precentage
+        * parameters
+        * 
+        * @param  path1  first branch mapping
+        * @param  path2  second branch mapping
+        * 
+        */    
+        double getPathsDistance(const MutationPath& path1, const MutationPath& path2);
+
+        /*
+        * @brief clusters stochastic mappings using k-means based on their distannce
+        * parameters
+        * 
+        * @param mappings   the mappings to cluster
+        * @param k          number of clusters to generate
+        * 
+        */        
+        vector<TreeMapping> kMeansClustering(vector<TreeMapping>& mappings, unsigned int k, unsigned int epochs = 20);
+
+        /*
+        * @brief generates a stochastic mappings based on the sampling and then clusters them based on similarity
+        * parameters
+        * 
+        * @param            number of clusters to generate
+        * 
+        */
+        vector<TreeMapping> generatedClusteredMappings(unsigned int numOfClusters = 10);
 
         /**
          *@brief Creates a single expected (i.e, average) history based on
@@ -147,10 +183,9 @@ namespace bpp
         *
         * the function assumes that there is only one site to simulate history
         *
-        * @param mappings          A vector of stochastic mappings to average
-        *
+        * @param mappings         the mappings to average over
         **/
-        TreeMapping generateExpectedMapping(vector<TreeMapping>& mappings);
+        TreeMapping generateExpectedMapping(const vector<TreeMapping>& mappings);
 
         /**
          *@brief returns the analytically estimated dwelling times under each model state in each branch
@@ -169,13 +204,13 @@ namespace bpp
         * @param mapping           The mapping from which the node state should be extracted
         * @return                  Node state is int
         */
-        unsigned int getNodeState(shared_ptr<PhyloNode> node, TreeMapping& mapping);
+        unsigned int getNodeState(shared_ptr<PhyloNode> node, const TreeMapping& mapping);
 
         /* compute the ancestral frequenceis of character states of all the nodes based on the mappings
         * @param                     A vector of the posterior probabilities probabilities to fill in (node**state combinaion in each entry)
         * @param                     A vector of mappings to base the frequencies on
         */
-        void computeStatesFrequencies(VVDouble& ancestralStatesFreuquencies, vector<TreeMapping>& mappings);
+        void computeStatesFrequencies(VVDouble& ancestralStatesFreuquencies, const vector<TreeMapping>& mappings);
 
     private:
 
