@@ -5,6 +5,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <numeric>
 
 // From bpp-core:
 #include <Bpp/Text/TextTools.h>
@@ -55,9 +56,6 @@ void checkIfMappingLegal(StochasticMapping& stocMapping, TreeMapping& mapping, P
     // make sure that the states at the leaves are set properly in mapping
     for (auto leaf: leaves)
     {
-        // if the state at the leaf is concrete
-        //string charState = tl.getData()->getSequence(leaf->getName());
-    
         // extract the leaf state from the character data in tl
         int leafState = -1;
         for (unsigned int state=0; state<modelStatesNum; ++state)
@@ -126,7 +124,7 @@ int main()
     {
         //fix seed for debugging purposes
         double seedUb = 10000000;
-        double seed = 9712420; RandomTools::giveRandomNumberBetweenZeroAndEntry(seedUb);
+        double seed = RandomTools::giveRandomNumberBetweenZeroAndEntry(seedUb);
         RandomTools::setSeed(static_cast<long int>(seed));
         cout << "seed: " << seed << endl; // for debugging purposes in case the tester fails
         
@@ -171,19 +169,20 @@ int main()
         shared_ptr<IntegerFrequencySet> freqs;
         freqs.reset(new FullIntegerFrequencySet(alpha, freqVals)); // frequencies set must be reset upon each usage to avoid concatanation of namespaces of prevous models
         auto model = std::make_shared<SingleRateModel>(alpha, freqs, false);
-        model.get()->setParameterValue("global_rate", 1.);
+        model.get()->setParameterValue("global_rate", 42.);
         model.get()->setFrequencySet(*freqs);
         SimpleSubstitutionProcess* process = new SimpleSubstitutionProcess(model, paramPhyloTree);
         
         // create tree likelihood computation process
         Context context;
         auto characterTreeLikelihood = std::make_shared<LikelihoodCalculationSingleProcess>(context, sites, *process);
+        auto copy = characterTreeLikelihood.get()->clone();
         
         // generate 1000 sotchastic mappings
         cout << "**** Generating 1000 stochastic mappings ****" << endl;
         unsigned int mappingsNum = 1000;
         auto stocMapping = std::make_shared<StochasticMapping>(characterTreeLikelihood, mappingsNum); // it is a good general practice to use "explicit" keyword on constructors with a single argument: https://stackoverflow.com/questions/121162/what-does-the-explicit-keyword-mean
-        vector<TreeMapping> mappings = stocMapping->generateStochasticMapping();
+        vector<TreeMapping> mappings = stocMapping->generateStochasticMappings();
         
         // make sure all the mappings are legal
         for (size_t i=0; i<mappingsNum; ++i)
@@ -221,108 +220,80 @@ int main()
            }
         }
         
-		// compute the average dwelling times at node S5
+		// compute the average dwelling times at node S19
         shared_ptr<const PhyloTree> baseTree = stocMapping->getBaseTree();
         VDouble AverageDwellingTimes;
         AverageDwellingTimes.clear();
         AverageDwellingTimes.resize(statesNum, 0);
-        
-		/*// compute the average dwelling times of all the states
+        unsigned int nodeIndex = 1;
+        std::shared_ptr<PhyloNode> node = baseTree.get()->getNode(nodeIndex); // this node index correspond to S19
+        unsigned int branchId = baseTree.get()->getEdgeIndex(baseTree.get()->getEdgeToFather(node));
+    
+		// compute the average dwelling times of all the states
         for (size_t i=0; i<mappings.size(); ++i)
         {
             TreeMapping& mapping =  mappings[i];
-            node = 
-            // get the pointers to the node and its father in the i'th mapping
-
-            std::shared_ptr<PhyloNode> curNode = getNodeByName(*mapping.at(), "S19"); // no longer exists
-            std::shared_ptr<PhyloNode> father = getNodeByName(*mapping.at(), mapping.at()->getFatherOfNode(curNode)->getName()); // the original father of the node (according to the base tree) in the mapping
-
-            while (mapping.at()->getNodeIndex(curNode) != mapping.at()->getNodeIndex(father))
+            MutationPath branchMapping = mapping.at(branchId);
+            vector<double> times = branchMapping.getTimes();
+            vector<size_t> states = branchMapping.getStates();
+            AverageDwellingTimes[branchMapping.getInitialState()] += times[0];
+            for (size_t e=0; e<branchMapping.getNumberOfEvents()-1; ++e)
             {
-                AverageDwellingTimes[StochasticMapping::getNodeState(curNode)] += mapping.at()->getEdgeLinking(curNode, mapping.at()->getFatherOfNode(curNode)).get()->getLength();  //curNode->getDistanceToFather();
-                curNode = mapping.at()->getFatherOfNode(curNode);
+                AverageDwellingTimes[states[e]] += times[e+1];
             }
         }
         for (size_t s=0; s<statesNum; ++s)
         {
-            AverageDwellingTimes[s] = 1.0* AverageDwellingTimes[s] / mappingsNum;
-        } */
+            AverageDwellingTimes[s] = AverageDwellingTimes[s] / static_cast<double>(mappings.size());
+        }
+        MutationPath expectedBranchMapping = expectedHistory.at(branchId);
+        vector<double> expectedTimes = expectedBranchMapping.getTimes();
+        double splitToFather = expectedTimes[0];
+        double splitFromSon = expectedTimes[expectedBranchMapping.getNumberOfEvents()-1];
 
-		// // check state of father of S5: if the state of the father is 1 -> also make sure the division of dwelling time under state 1 corresponds to the frequency of 1 in the father
-        // std::shared_ptr<PhyloNode> son = getNodeByName(*expectedHistory.get(), "S19");
-		// string fatherName = phyloTree.get()->getFatherOfNode(son)->getName();
-		// std::shared_ptr<PhyloNode> father = getNodeByName(*expectedHistory.get(), fatherName);
-        // std::shared_ptr<PhyloNode> grandFather = expectedHistory.get()->getFatherOfNode(father);
-        // std::shared_ptr<PhyloNode> grandGrandFather = expectedHistory.get()->getFatherOfNode(grandFather);
-        // std::shared_ptr<PhyloNode> grandGrandGrandFather = expectedHistory.get()->getFatherOfNode(grandGrandFather);
-        // std::shared_ptr<PhyloNode> grandGrandGrandGrandFather = expectedHistory.get()->getFatherOfNode(grandGrandGrandFather);
-        
-        // size_t fatherState = StochasticMapping::getNodeState(father);
-        // size_t sonState = StochasticMapping::getNodeState(son);
-		// double splitFromSon, splitToFather;
-        // map<size_t, double> stateToDwelling;
-        // splitFromSon = expectedHistory.get()->getEdgeLinking(son, father).get()->getLength();
-        // stateToDwelling.clear();
-        // stateToDwelling[StochasticMapping::getNodeState(father)] = expectedHistory.get()->getEdgeLinking(father, grandFather).get()->getLength();
-        // stateToDwelling[StochasticMapping::getNodeState(grandFather)] = expectedHistory.get()->getEdgeLinking(grandFather, grandGrandFather).get()->getLength();
-        // stateToDwelling[StochasticMapping::getNodeState(grandGrandFather)] = expectedHistory.get()->getEdgeLinking(grandGrandFather, grandGrandGrandFather).get()->getLength();
-        // splitToFather = expectedHistory.get()->getEdgeLinking(grandGrandGrandFather, grandGrandGrandGrandFather).get()->getLength();
-        // if (fatherState == sonState)
-        // {
-        //     stateToDwelling[sonState] = splitFromSon + splitToFather;
-        //     // compute division of dwelling time according to the states freuqncies at the father
-        //     std::shared_ptr<PhyloNode> node = getNodeByName(*phyloTree.get(), "S19");
-        //     unsigned int nodeIndex = phyloTree.get()->getNodeIndex(node);
-        //     std::shared_ptr<PhyloNode> origFather = phyloTree.get()->getFatherOfNode(node);
-        //     unsigned int origFatherIndex = phyloTree.get()->getNodeIndex(origFather);
-        //     double fatherFrequency = ancestralFrequencies[origFatherIndex][sonState];
-		// 	double sonFrequency = ancestralFrequencies[nodeIndex][sonState];
-        //     double fatherShare = fatherFrequency / (sonFrequency+fatherFrequency) * AverageDwellingTimes[sonState];
-        //     double sonShare = AverageDwellingTimes[sonState] - fatherShare;
+		// check state of father of S19: if the state of the father is 0 -> also make sure the division of dwelling time under state 0 corresponds to the frequency of 0 in the father
+        unsigned int nodeState = stocMapping->getNodeState(node, expectedHistory);
+        std::shared_ptr<PhyloNode> father = baseTree.get()->getFatherOfNode(node);
+        unsigned int fatherIndex = baseTree.get()->getNodeIndex(father);
+        unsigned int fatherState = stocMapping->getNodeState(father, expectedHistory);
+        if (fatherState == nodeState)
+        {
+            // compute division of dwelling time according to the states freuqncies at the father
+            double fatherFrequency = ancestralFrequencies[fatherIndex][nodeState];
+			double sonFrequency = ancestralFrequencies[nodeIndex][nodeState];
+            double fatherShare = fatherFrequency / (sonFrequency+fatherFrequency) * AverageDwellingTimes[nodeState];
+            double sonShare = AverageDwellingTimes[nodeState] - fatherShare;
 
-        //     // expected: ...S5{1}:AverageDwellingTimes[1]-fatherShare)mappingInternal_1{0}:AverageDwellingTimes[0])mappingInternal_2{1}:fatherShare)father{1}
-        //     if (abs(splitFromSon - sonShare) > 0.0001)
-        //     {
-        //         cout << "Error in dwelling time division between father and son. Branch of son is of length " << splitFromSon << " instead of " << sonShare << endl;
-        //         return 1;
-        //     }
-        //     if (abs(splitToFather - fatherShare) > 0.0001)
-        //     {
-        //         cout << "Error in dwelling time division between father and son. Branch beneath father is of length " << splitToFather << " instead of " << fatherShare << endl;
-        //         return 1;               
-        //     }
-        // }
-        // else
-        // {
-        //     stateToDwelling[sonState] = splitFromSon;
-        //     stateToDwelling[fatherState] = splitToFather;
-        //     if (abs(stateToDwelling[sonState] - AverageDwellingTimes[sonState]) > 0.0001)
-        //     {
-        //         cout << "Error in dwelling time from son. Branch of son is of length " << stateToDwelling[sonState] << " instead of " << AverageDwellingTimes[sonState] << endl;
-        //         return 1;
-        //     }
-        //     if (abs(stateToDwelling[fatherState] - AverageDwellingTimes[fatherState]) > 0.0001)
-        //     {
-        //         cout << "Error in dwelling time to father. Branch of son is of length " << stateToDwelling[fatherState] << " instead of " << AverageDwellingTimes[fatherState] << endl;
-        //         return 1;
-        //     }
-        // }
-        // // check the rest of the splits
-        // for (size_t s=0; s<statesNum; ++s)
-        // {
-        //     if ((s != sonState) & (s != fatherState))
-        //     {
-        //         if (abs(stateToDwelling[s] - AverageDwellingTimes[s]) > 0.0001)
-        //         {
-        //             cout << "Error in dwelling time in transition from state " << s << "Branch is of length " << stateToDwelling[s] << " instead of " << AverageDwellingTimes[s] << endl;
-        //             return 1;   
-        //         }
-        //     }
-        // }
+            if (abs(splitFromSon - sonShare) > 0.0001)
+            {
+                cout << "Error in dwelling time division between father and son. Branch of son is of length " << splitFromSon << " instead of " << sonShare << endl;
+                return 1;
+            }
+            if (abs(splitToFather - fatherShare) > 0.0001)
+            {
+                cout << "Error in dwelling time division between father and son. Branch beneath father is of length " << splitToFather << " instead of " << fatherShare << endl;
+                return 1;               
+            }
+        }
+        else
+        {
+            if (abs(splitFromSon - AverageDwellingTimes[nodeState]) > 0.0001)
+            {
+                cout << "Error in dwelling time from son. Branch of son is of length " << splitFromSon << " instead of " << AverageDwellingTimes[nodeState] << endl;
+                return 1;
+            }
+            if (abs(splitToFather - AverageDwellingTimes[fatherState]) > 0.0001)
+            {
+                cout << "Error in dwelling time to father. Branch of son is of length " << splitToFather << " instead of " << AverageDwellingTimes[fatherState] << endl;
+                return 1;
+            }
+        }
 
-		// // repeat the same tests for the analytic expected history
-        // TreeMapping analyticExpectedHistory = stocMapping->generateAnalyticExpectedMapping();
-        // checkIfMappingLegal(*stocMapping.get(), analyticExpectedHistory, *phyloTree.get(), *characterTreeLikelihood.get());
+		// repeat the same tests for the analytic expected history
+        cout << "**** Generating analytic expected mapping ****" << endl;
+        TreeMapping analyticExpectedHistory = stocMapping->generateAnalyticExpectedMapping();
+        checkIfMappingLegal(*stocMapping.get(), analyticExpectedHistory, *phyloTree.get(), *characterTreeLikelihood.get());
+        cout << "**** The generated analytic mapping is legal ****" << endl;
 
         // // create another analytic expected mapping and make sure its equal to the former one (reconstruction is deterministic)
         // TreeMapping analyticExpectedHistory2 = stocMapping->generateAnalyticExpectedMapping();
