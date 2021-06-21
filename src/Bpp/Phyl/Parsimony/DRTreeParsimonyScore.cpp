@@ -409,27 +409,27 @@ void DRTreeParsimonyScore::doNNI(int nodeId)
 
 void DRTreeParsimonyScore::setNodeState(Node* node, size_t state)
 {
-    BppInteger* stateProperty = new BppInteger(static_cast<int>(state));
+    Number<size_t>* stateProperty = new Number<size_t>(state);
     node->setNodeProperty(STATE, *stateProperty);
     delete stateProperty; 
 }
 
 /******************************************************************************/
 
-int DRTreeParsimonyScore::getNodeState(const Node* node)
+size_t DRTreeParsimonyScore::getNodeState(const Node* node)
 {
-    return (dynamic_cast<const BppInteger*>(node->getNodeProperty(STATE)))->getValue(); // exception on root on the true history - why didn't the root recieve a state?
+  return (dynamic_cast<const Number<size_t>*>(node->getNodeProperty(STATE)))->getValue(); // exception on root on the true history - why didn't the root recieve a state?
 }
 
 /******************************************************************************/
 
 void DRTreeParsimonyScore::computeSolution() 
 {
-  map<int,vector<unsigned int>> nodeToPossibleStates;
+  map< int, vector<size_t> > nodeToPossibleStates;
   TreeTemplate<Node>* tree = getTreeP_();
   vector<Node*> nodes = tree->getNodes();
   vector<Bitset> nodeBitsets;
-  for (unsigned int n=0; n<nodes.size(); ++n)
+  for (size_t n = 0; n < nodes.size(); ++n)
   {
     // extract the node's bisets (i.e, possible states assignments)
     if (nodes[n]->isLeaf())
@@ -455,8 +455,8 @@ void DRTreeParsimonyScore::computeSolution()
        nodeBitsets = (&parsimonyData_->getNodeData(neighborId))->getBitsetsArrayForNeighbor(nodes[n]->getId());
     }
     // map the node id to its possible states
-    vector <unsigned int> possibleStates;
-    for (unsigned int s=0; s<getStateMap().getNumberOfModelStates(); ++s)
+    vector <size_t> possibleStates;
+    for (size_t s = 0; s < getStateMap().getNumberOfModelStates(); ++s)
     {
       if (nodeBitsets[0].test(s))
       {
@@ -468,10 +468,10 @@ void DRTreeParsimonyScore::computeSolution()
 
   // set states for the nodes according to their possible assignments and parent state
   TreeIterator* treeIt = new PreOrderTreeIterator(*tree);
-  for (Node* node = treeIt->begin(); node != treeIt->end(); node = treeIt->next())
+  for (const Node* node = treeIt->begin(); node != treeIt->end(); node = treeIt->next())
   {
-    int nodeState; 
-    vector<unsigned int> possibleStates = nodeToPossibleStates[node->getId()];
+    size_t nodeState; 
+    vector<size_t> possibleStates = nodeToPossibleStates[node->getId()];
     if (possibleStates.size() == 1)
     {
       nodeState = possibleStates[0];
@@ -484,7 +484,7 @@ void DRTreeParsimonyScore::computeSolution()
     {
       nodeState = RandomTools::pickOne(possibleStates);
     }
-    setNodeState(node, nodeState);
+    setNodeState(tree->getNode(node->getId()), nodeState);
   }
   delete treeIt;
 }
