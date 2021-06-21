@@ -45,7 +45,7 @@ StochasticMapping::StochasticMapping(std::shared_ptr<LikelihoodCalculationSingle
 
 /******************************************************************************/
 
-vector<TreeMapping> StochasticMapping::generateStochasticMapping()
+vector<TreeMapping> StochasticMapping::generateStochasticMappings()
 {
   vector<TreeMapping> mappings;
   mappings.clear();
@@ -68,6 +68,146 @@ vector<TreeMapping> StochasticMapping::generateStochasticMapping()
 
 /******************************************************************************/
 
+double StochasticMapping::getDistance(const TreeMapping& mapping1, const TreeMapping& mapping2)
+{
+    double distance = 0;
+    auto nodes = tree_.get()->getAllNodes();
+    for (auto node: nodes)
+    {
+        if (tree_.get()->hasFather(node))
+        {
+            unsigned int branchId = tree_.get()->getEdgeIndex(tree_.get()->getEdgeToFather(node));
+            distance += getPathsDistance(mapping1.at(branchId), mapping2.at(branchId));
+        }
+    }
+    distance /= static_cast<double>(nodes.size());
+    return distance;
+}
+
+/******************************************************************************/
+
+double StochasticMapping::getPathsDistance(const MutationPath& path1, const MutationPath& path2)
+{
+    // both paths must apply to the same branch and thus have the same length
+    assert(path1.getTotalTime() == path2.getTotalTime());
+    double totalTime = path1.getTotalTime();
+    
+    // get paths info
+    vector<size_t> path1States = path1.getStates();
+    vector<double> path1Times = path1.getTimes();
+    vector<size_t> path2States = path2.getStates();
+    vector<double> path2Times = path2.getTimes();
+
+    // init
+    size_t path1CurrEvent = 0, path2CurrEvent = 0;
+    size_t path1CurrState = path1.getInitialState(), path2CurrState = path2.getInitialState();
+    double path1CurrTime = path1Times[path1CurrEvent], path2CurrTime = path2Times[path2CurrEvent];
+    double time = 0, distance = 0;
+
+
+    while (time < totalTime)
+    {
+        // increment by the lower time value
+        if (path1CurrTime < path2CurrTime)
+        {
+            time += path1CurrTime;
+            path1CurrEvent += 1;
+            path2CurrTime -= time;
+        }
+        else
+        {
+            time += path2CurrTime;
+            path2CurrEvent += 1;
+            path1CurrTime -= time;
+        }
+
+        // add disagreement to distance
+        if (path1CurrState != path2CurrState)
+            distance += time;
+
+        // update times and states  
+        path1CurrTime = path1CurrEvent < path1.getNumberOfEvents() ? path1Times[path1CurrEvent] : (path1.getTotalTime() - accumulate(path1Times.begin(), path1Times.end(), 0.0));
+        path1CurrState = path1CurrEvent == 0 ? path1.getInitialState() : path1States[path1CurrEvent];
+        path2CurrTime = path2CurrEvent < path2.getNumberOfEvents() ? path2Times[path2CurrEvent] : (path2.getTotalTime() - accumulate(path2Times.begin(), path2Times.end(), 0.0));
+        path2CurrState = path2CurrEvent == 0 ? path2.getInitialState() : path2States[path2CurrEvent];
+    }
+    distance /= totalTime;
+    assert(distance <= 1);
+    
+    return distance;
+}
+
+/******************************************************************************/
+
+vector<TreeMapping> StochasticMapping::kMeansClustering(vector<TreeMapping>& mappings, unsigned int k, unsigned int epochs)
+{
+    // init
+    vector<TreeMapping> centroids;
+    
+    for (unsigned int i = 0; i < k; ++i) {
+        centroids.push_back(mappings[RandomTools::giveIntRandomNumberBetweenZeroAndEntry(mappings.size()-1)]);
+    }
+    map <unsigned int, pair<unsigned int, double>> mappingToCentroid; // maps mapping index (in mappings) to its centroid index (in centroids) and its distance from it
+
+    unsigned it = 0;
+    while (it < epochs)
+    {
+        // assign mappings centroids
+        for (unsigned int m=0; m<mappings.size(); ++m)
+        {
+            unsigned int clusterId = 0;
+            unsigned int closestCentroid = clusterId;
+            double minDist = getDistance(mappings[m], centroids[clusterId]);
+            while (clusterId < k)
+            {
+                double distance = getDistance(mappings[m], centroids[clusterId]);
+                if (distance < minDist)
+                {
+                    closestCentroid = clusterId;
+                    minDist = distance;
+                }
+            }
+            mappingToCentroid[m] = make_pair(closestCentroid, minDist);
+        }
+
+        // compute the mean of each cluster based in its members
+        for (size_t clusterId=0; clusterId<k; ++clusterId)
+        {
+            vector<TreeMapping> clusterMembers;
+            for (unsigned int m=0; m<mappings.size(); ++m)
+            {
+                if (mappingToCentroid.at(m).first == clusterId)
+                    clusterMembers.push_back(mappings[m]);
+            }
+            centroids[clusterId] = generateExpectedMapping(clusterMembers);
+
+        }
+        mappingToCentroid.clear();
+    }
+
+    return centroids;
+}
+
+/******************************************************************************/
+
+vector<TreeMapping> StochasticMapping::generatedClusteredMappings(unsigned int numOfClusters)
+{
+  // init
+  vector<TreeMapping> mappingsCentroids;
+  mappingsCentroids.clear();
+  mappingsCentroids.resize(numOfClusters);
+
+  // compute pairwise distances - can I use additivity here?
+  vector<TreeMapping> mappings = generateStochasticMappings();
+
+  // apply clustering (for now, use k-means clustering)
+  kMeansClustering(mappings, numOfClusters);
+
+  return mappingsCentroids;
+}
+
+/******************************************************************************/
+
 void StochasticMapping::setExpectedAncestrals(TreeMapping& expectedMapping, VVDouble& ancestralStatesFrequencies)
 {
   auto nodes= tree_.get()->getAllNodes();
@@ -82,7 +222,7 @@ void StochasticMapping::setExpectedAncestrals(TreeMapping& expectedMapping, VVDo
 
 /******************************************************************************/
 
-TreeMapping StochasticMapping::generateExpectedMapping(vector<TreeMapping>& mappings)
+TreeMapping StochasticMapping::generateExpectedMapping(const vector<TreeMapping>& mappings)
 {
     // initialize the expected history
     TreeMapping expectedMapping;
@@ -119,9 +259,10 @@ TreeMapping StochasticMapping::generateExpectedMapping(vector<TreeMapping>& mapp
                 vector<double> times = branchMapping.getTimes();
                 assert(branchMapping.getTotalTime() == branchLength);
                 shared_ptr<PhyloNode> father = tree_.get()->getFatherOfNode(node);
-                for (size_t e=0; e<branchMapping.getNumberOfEvents(); ++e)
+                AverageDwellingTimes[branchMapping.getInitialState()] += times[0];
+                for (size_t e=0; e<branchMapping.getNumberOfEvents()-1; ++e)
                 {
-                    AverageDwellingTimes[states[e]] += times[e]; // only model states, which are non-negative, are considered
+                    AverageDwellingTimes[states[e]] += times[e+1]; // only model states, which are non-negative, are considered
                 }
             }
             for (size_t state = 0; state < modelStatesNum; ++state)
@@ -174,7 +315,7 @@ VVDouble StochasticMapping::getAnalyticDwellingTimes()
     // Compute the reward per state per site - expect the entries per site to be equal to the number of model states
     // we denote the reward for staying at model state k as rk
     // first, create a numeric alphabet whose states correspond to the model states
-    shared_ptr<UserAlphabetIndex1> alpha = make_shared<UserAlphabetIndex1>(alphabet);
+    UserAlphabetIndex1 alpha(alphabet);
     map <size_t, int> alphabetStatesToModelStates;
     size_t alphabetStatesNum = alphabet->getNumberOfStates();
     vector<string> resolvedStates = alphabet->getResolvedChars(); // here, only treat resolved states of the alphabet
@@ -196,7 +337,7 @@ VVDouble StochasticMapping::getAnalyticDwellingTimes()
         for (size_t cs=0; cs<alphabetCorrespondingStates_a.size(); ++cs)
         {
             int state_a = alphabetCorrespondingStates_a[cs];
-            alpha.get()->setIndex(state_a, 1); // set the reward of the state as 1 and the reward for the rest of the states as 0
+            alpha.setIndex(state_a, 1); // set the reward of the state as 1 and the reward for the rest of the states as 0
             //for (size_t m = 0; m < alphabetStatesNum; ++m)
             for (size_t m=0; m<resolvedStates.size(); ++m)
             {
@@ -216,20 +357,21 @@ VVDouble StochasticMapping::getAnalyticDwellingTimes()
                     }
                     if (!in_a)
                     {
-                        alpha.get()->setIndex(state_b, 0);
+                        alpha.setIndex(state_b, 0);
                     }
                 }
             }
+            DecompositionReward reward(dynamic_cast<const SubstitutionModel*>(model), alpha.clone()); // TO FIX 20.6: this line attempts to delete alpha which doesn't belong to it. cloning it didn't help - get help from Itay / Anat
+            //LikelihoodCalculationSingleProcess* rewardLik = likelihood_.get()->clone();
+            shared_ptr<LikelihoodCalculationSingleProcess> rewardLik = make_shared<LikelihoodCalculationSingleProcess>(*likelihood_);
+            ProbabilisticRewardMapping mapping(RewardMappingTools::computeRewardVectors(*rewardLik.get(), tree_.get()->getAllNodesIndexes(), reward, false));
             
-            unique_ptr<Reward> reward(new DecompositionReward(dynamic_cast<const SubstitutionModel*>(model), alpha.get()));
-            unique_ptr<ProbabilisticRewardMapping> mapping(RewardMappingTools::computeRewardVectors(*likelihood_.get(), tree_.get()->getAllNodesIndexes(), *reward, false));
-
             for (auto node: nodes) 
             {
                 if (tree_.get()->hasFather(node)) // for any node except to the root
                 {
                     unsigned int nodeIndex = tree_.get()->getNodeIndex(node);
-                    double dwellingTime =  mapping->getReward(nodeIndex, 0);
+                    double dwellingTime =  mapping.getReward(nodeIndex, 0);
                     vector <size_t> correspondingModelStates = model->getModelStates(state_a);
                     for (size_t ms=0; ms<correspondingModelStates.size(); ++ms)
                         expectedDwellingTimes[nodeIndex][correspondingModelStates[ms]] = dwellingTime / static_cast<double>(correspondingModelStates.size());
@@ -295,7 +437,7 @@ TreeMapping StochasticMapping::generateAnalyticExpectedMapping()
 
 /******************************************************************************/
 
-unsigned int StochasticMapping::getNodeState(shared_ptr<PhyloNode> node, TreeMapping& mapping)
+unsigned int StochasticMapping::getNodeState(shared_ptr<PhyloNode> node, const TreeMapping& mapping)
 {
   if (tree_.get()->isLeaf(node))
   {
@@ -498,7 +640,7 @@ void StochasticMapping::ComputeConditionals()
 
 /******************************************************************************/
 
-void StochasticMapping::computeStatesFrequencies(VVDouble& ancestralStatesFreuquencies, vector<TreeMapping>& mappings)
+void StochasticMapping::computeStatesFrequencies(VVDouble& ancestralStatesFreuquencies, const vector<TreeMapping>& mappings)
 {
     size_t modelStatesNum = likelihood_->getSubstitutionProcess().getNumberOfStates();
     PreOrderTreeIterator treeIt(*tree_.get());
@@ -709,7 +851,7 @@ void StochasticMapping::sampleMutationsGivenAncestralsPerBranch(TreeMapping& map
     }
     else
     {
-        branchMapping.addEvent(sonState, dwellingTimes[fatherState]);
+        branchMapping.addEvent(fatherState, dwellingTimes[fatherState]);
     }
     // set all events except for the one entering the son
     for (size_t state = 0; state < modelStatesNum; ++state)
@@ -724,6 +866,10 @@ void StochasticMapping::sampleMutationsGivenAncestralsPerBranch(TreeMapping& map
     {
         shareOfSon = 1 - shareOfFather;
         branchMapping.addEvent(sonState, dwellingTimes[sonState] * shareOfSon);
+    }
+    else
+    {
+        branchMapping.addEvent(sonState, dwellingTimes[sonState]);
     }
     assert(branchMapping.getTotalTime() == branchLength);
 }
